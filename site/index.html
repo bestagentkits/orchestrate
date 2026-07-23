@@ -1,0 +1,961 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Orchestrate — Multi-Runtime Agent Orchestration for Claude Code</title>
+<meta name="description" content="Orchestrate coordinates staged or parallel jobs across live-verified coding-agent runtimes and in-session subagents: capability- and risk-based routing, worktree isolation, resumable state, and independent arbiter review.">
+<style>
+/* ============================================================
+   ORCHESTRATE — editorial magazine landing page
+   Single file. No external assets. Theme + language switchable.
+   ============================================================ */
+
+:root {
+  /* Warm press-paper palette (light, default) */
+  --paper:      #f7f4ed;
+  --paper-2:    #efeade;
+  --paper-3:    #e6dfd0;
+  --ink:        #17150f;
+  --ink-soft:   #4a4437;
+  --ink-faint:  #8a8271;
+  --rule:       #cfc6b2;
+  --rule-soft:  #e0d8c6;
+  --accent:     #b23a1f;
+  --accent-2:   #1f5c4f;
+  --accent-ink: #ffffff;
+  --code-bg:    #1c1a15;
+  --code-fg:    #ece5d4;
+  --code-dim:   #8e876f;
+  --shadow:     0 1px 0 rgba(23,21,15,.06), 0 18px 40px -28px rgba(23,21,15,.45);
+
+  --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, "Times New Roman", serif;
+  --sans:  ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --mono:  ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+
+  --maxw: 1180px;
+  --gutter: clamp(20px, 5vw, 64px);
+}
+
+html[data-theme="dark"] {
+  --paper:      #100f0c;
+  --paper-2:    #17160f;
+  --paper-3:    #1f1d15;
+  --ink:        #f0ebde;
+  --ink-soft:   #b9b2a0;
+  --ink-faint:  #7d7767;
+  --rule:       #34301f;
+  --rule-soft:  #262316;
+  --accent:     #e8734f;
+  --accent-2:   #6fc0a9;
+  --accent-ink: #12110d;
+  --code-bg:    #080806;
+  --code-fg:    #e6dfcd;
+  --code-dim:   #736d5b;
+  --shadow:     0 1px 0 rgba(0,0,0,.4), 0 18px 44px -30px rgba(0,0,0,.9);
+}
+
+@media (prefers-color-scheme: dark) {
+  html:not([data-theme]) {
+    --paper: #100f0c; --paper-2: #17160f; --paper-3: #1f1d15;
+    --ink: #f0ebde; --ink-soft: #b9b2a0; --ink-faint: #7d7767;
+    --rule: #34301f; --rule-soft: #262316;
+    --accent: #e8734f; --accent-2: #6fc0a9; --accent-ink: #12110d;
+    --code-bg: #080806; --code-fg: #e6dfcd; --code-dim: #736d5b;
+  }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--serif);
+  font-size: 18px;
+  line-height: 1.62;
+  overflow-x: hidden;
+  transition: background .35s ease, color .35s ease;
+}
+
+/* Subtle paper grain, drawn not fetched */
+body::before {
+  content: "";
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 0;
+  opacity: .5;
+  background-image:
+    radial-gradient(circle at 20% 30%, color-mix(in srgb, var(--accent) 5%, transparent), transparent 45%),
+    radial-gradient(circle at 82% 12%, color-mix(in srgb, var(--accent-2) 5%, transparent), transparent 42%);
+}
+main, header, footer { position: relative; z-index: 1; }
+
+.wrap { max-width: var(--maxw); margin: 0 auto; padding-inline: var(--gutter); }
+
+a { color: inherit; }
+::selection { background: var(--accent); color: var(--accent-ink); }
+
+/* ---------- Masthead ---------------------------------------------------- */
+.masthead {
+  position: sticky; top: 0; z-index: 50;
+  background: color-mix(in srgb, var(--paper) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(12px);
+  border-bottom: 1px solid var(--rule);
+}
+.masthead-in {
+  display: flex; align-items: center; gap: 18px;
+  min-height: 62px;
+}
+.brand {
+  font-family: var(--sans);
+  font-weight: 800; letter-spacing: .16em; text-transform: uppercase;
+  font-size: 13px;
+  display: flex; align-items: center; gap: 10px;
+  text-decoration: none;
+}
+.brand-mark {
+  width: 22px; height: 22px; flex: none;
+  border: 1.5px solid var(--accent); border-radius: 50%;
+  position: relative;
+}
+.brand-mark::before, .brand-mark::after {
+  content: ""; position: absolute; background: var(--accent); border-radius: 50%;
+}
+.brand-mark::before { width: 5px; height: 5px; top: -3px; left: 7.5px; }
+.brand-mark::after  { width: 5px; height: 5px; bottom: -3px; left: 7.5px; }
+
+.masthead-issue {
+  font-family: var(--sans); font-size: 11px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--ink-faint);
+  margin-left: auto;
+}
+@media (max-width: 720px) { .masthead-issue { display: none; } }
+
+.switches { display: flex; gap: 8px; align-items: center; }
+.seg {
+  display: inline-flex; border: 1px solid var(--rule); border-radius: 999px;
+  overflow: hidden; background: var(--paper-2);
+}
+.seg button {
+  appearance: none; border: 0; background: transparent; cursor: pointer;
+  font-family: var(--sans); font-size: 11px; font-weight: 700;
+  letter-spacing: .1em; text-transform: uppercase;
+  padding: 7px 12px; color: var(--ink-faint);
+  transition: background .2s, color .2s;
+}
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--paper); }
+/* Hover must never repaint the active pill's label into its own background. */
+.seg button:not([aria-pressed="true"]):hover { color: var(--ink); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+/* ---------- Hero -------------------------------------------------------- */
+.hero { padding: clamp(38px, 7vw, 84px) 0 clamp(30px, 5vw, 56px); }
+.kicker {
+  font-family: var(--sans); font-size: 11.5px; font-weight: 700;
+  letter-spacing: .24em; text-transform: uppercase; color: var(--accent);
+  display: flex; align-items: center; gap: 12px; margin-bottom: 22px;
+}
+.kicker::after { content: ""; height: 1px; background: var(--rule); flex: 1; }
+
+h1.headline {
+  font-family: var(--serif);
+  font-size: clamp(46px, 10.5vw, 132px);
+  line-height: .92;
+  letter-spacing: -.035em;
+  font-weight: 400;
+  margin: 0 0 6px;
+  text-wrap: balance;
+}
+h1.headline em {
+  font-style: italic;
+  color: var(--accent);
+}
+.headline-rule { height: 3px; background: var(--ink); margin: 28px 0 26px; }
+
+.hero-grid {
+  display: grid;
+  grid-template-columns: 1.35fr .85fr;
+  gap: clamp(24px, 5vw, 64px);
+  align-items: start;
+}
+@media (max-width: 860px) { .hero-grid { grid-template-columns: 1fr; } }
+
+.standfirst {
+  font-size: clamp(20px, 2.3vw, 25px);
+  line-height: 1.45;
+  color: var(--ink);
+  margin: 0 0 22px;
+  text-wrap: pretty;
+}
+.byline {
+  font-family: var(--sans); font-size: 12px; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--ink-faint);
+  border-top: 1px solid var(--rule-soft); padding-top: 14px;
+}
+
+.specsheet {
+  border: 1px solid var(--rule);
+  background: var(--paper-2);
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+}
+.specsheet h3 {
+  font-family: var(--sans); font-size: 10.5px; font-weight: 800;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--ink-faint);
+  margin: 0 0 14px;
+}
+.specsheet dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 9px 16px; }
+.specsheet dt {
+  font-family: var(--sans); font-size: 11px; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--ink-faint); white-space: nowrap;
+}
+.specsheet dd { margin: 0; font-family: var(--mono); font-size: 13px; color: var(--ink); }
+
+.cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 26px; }
+.btn {
+  display: inline-flex; align-items: center; gap: 9px;
+  font-family: var(--sans); font-size: 13px; font-weight: 700;
+  letter-spacing: .05em; text-decoration: none;
+  padding: 12px 20px; border: 1px solid var(--ink);
+  transition: transform .18s ease, background .2s, color .2s;
+}
+.btn:hover { transform: translateY(-2px); }
+.btn-primary { background: var(--ink); color: var(--paper); }
+.btn-primary:hover { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn-ghost:hover { background: var(--paper-3); }
+
+/* ---------- Terminal ---------------------------------------------------- */
+.terminal {
+  background: var(--code-bg); color: var(--code-fg);
+  font-family: var(--mono); font-size: 13.5px; line-height: 1.75;
+  border: 1px solid color-mix(in srgb, var(--code-fg) 14%, transparent);
+  box-shadow: var(--shadow);
+  overflow: hidden;
+}
+.terminal-bar {
+  display: flex; align-items: center; gap: 7px;
+  padding: 9px 14px;
+  border-bottom: 1px solid color-mix(in srgb, var(--code-fg) 12%, transparent);
+  background: color-mix(in srgb, var(--code-fg) 5%, transparent);
+}
+.tdot { width: 9px; height: 9px; border-radius: 50%; background: var(--code-dim); opacity: .55; }
+.terminal-title {
+  margin-left: 8px; font-size: 11px; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--code-dim);
+}
+.terminal-body { padding: 16px 18px; overflow-x: auto; }
+.terminal-body pre { margin: 0; white-space: pre; }
+.t-prompt { color: var(--accent); }
+.t-cmd    { color: var(--code-fg); }
+.t-flag   { color: var(--accent-2); }
+.t-note   { color: var(--code-dim); }
+
+/* ---------- Section scaffolding ---------------------------------------- */
+section { padding: clamp(44px, 7vw, 92px) 0; border-top: 1px solid var(--rule); }
+/* Grid, not flex: a flex deck with max-width shrinks onto a short heading's line. */
+.sec-head {
+  display: grid; grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 16px; align-items: baseline; margin-bottom: 34px;
+}
+.sec-num {
+  grid-column: 1;
+  font-family: var(--mono); font-size: 12px; color: var(--accent);
+  letter-spacing: .1em; padding-top: 6px;
+}
+.sec-head h2, .sec-head .sec-deck { grid-column: 2; }
+h2 {
+  font-size: clamp(30px, 4.6vw, 52px); line-height: 1.04;
+  letter-spacing: -.024em; font-weight: 400; margin: 0;
+  text-wrap: balance;
+}
+.sec-deck {
+  font-size: 18px; color: var(--ink-soft); max-width: 62ch;
+  margin: 14px 0 0;
+  text-wrap: pretty;
+}
+
+/* ---------- Lede / drop cap -------------------------------------------- */
+.lede-grid { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(24px, 4vw, 56px); }
+@media (max-width: 800px) { .lede-grid { grid-template-columns: 1fr; } }
+.lede p { margin: 0 0 18px; text-wrap: pretty; }
+/* Drop cap is opening-paragraph furniture only — not every .lede column. */
+.lede--dropcap > p:first-child::first-letter {
+  float: left; font-size: 4.6em; line-height: .78; font-weight: 400;
+  padding: .06em .1em 0 0; color: var(--accent);
+}
+.pull {
+  border-left: 3px solid var(--accent);
+  padding: 4px 0 4px 22px;
+  font-size: clamp(21px, 2.6vw, 28px); line-height: 1.34;
+  font-style: italic; color: var(--ink);
+  margin: 8px 0 0;
+  text-wrap: pretty;
+}
+
+/* ---------- Pipeline ---------------------------------------------------- */
+.pipeline { border-top: 1px solid var(--rule-soft); }
+.stage {
+  display: grid; grid-template-columns: 78px 1fr 1.1fr;
+  gap: clamp(14px, 3vw, 40px);
+  padding: 24px 0; border-bottom: 1px solid var(--rule-soft);
+  align-items: start;
+  transition: background .25s ease;
+}
+.stage:hover { background: var(--paper-2); }
+@media (max-width: 760px) { .stage { grid-template-columns: 52px 1fr; } .stage-body { grid-column: 1 / -1; } }
+.stage-n {
+  font-family: var(--mono); font-size: 30px; color: var(--rule);
+  line-height: 1; letter-spacing: -.04em;
+}
+.stage:hover .stage-n { color: var(--accent); }
+.stage h3 { margin: 0; font-size: 23px; font-weight: 400; letter-spacing: -.012em; line-height: 1.2; }
+.stage-body { margin: 0; color: var(--ink-soft); font-size: 16.5px; line-height: 1.6; text-wrap: pretty; }
+
+/* ---------- Tier tables ------------------------------------------------- */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(22px, 4vw, 48px); }
+@media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }
+.tier-card { border: 1px solid var(--rule); background: var(--paper-2); padding: 24px; }
+.tier-card > h3 {
+  font-family: var(--sans); font-size: 11px; font-weight: 800;
+  letter-spacing: .2em; text-transform: uppercase;
+  margin: 0 0 18px; color: var(--ink-faint);
+}
+.tier { display: grid; grid-template-columns: 52px 1fr; gap: 14px; padding: 11px 0; border-top: 1px solid var(--rule-soft); }
+.tier:first-of-type { border-top: 0; }
+.tier code {
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  color: var(--accent-ink); background: var(--accent);
+  padding: 3px 7px; border-radius: 3px; height: fit-content; text-align: center;
+}
+.tier.r-low code  { background: var(--accent-2); }
+.tier span { font-size: 16px; color: var(--ink-soft); line-height: 1.5; }
+
+/* ---------- Safety cards ------------------------------------------------ */
+/* Six cards, so lock to 3 / 2 / 1 columns — auto-fit would leave a dead cell. */
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--rule); border: 1px solid var(--rule); }
+@media (max-width: 900px) { .cards { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 560px) { .cards { grid-template-columns: 1fr; } }
+.card { background: var(--paper); padding: 26px 24px; transition: background .25s; }
+.card:hover { background: var(--paper-2); }
+.card-icon { font-size: 21px; margin-bottom: 12px; display: block; }
+.card h3 { margin: 0 0 9px; font-size: 20px; font-weight: 400; letter-spacing: -.01em; }
+.card p { margin: 0; font-size: 16px; color: var(--ink-soft); line-height: 1.58; text-wrap: pretty; }
+
+/* ---------- Code figure ------------------------------------------------- */
+figure { margin: 0; }
+figcaption {
+  font-family: var(--sans); font-size: 11px; letter-spacing: .16em;
+  text-transform: uppercase; color: var(--ink-faint);
+  margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px solid var(--rule-soft);
+}
+.code-block {
+  background: var(--code-bg); color: var(--code-fg);
+  font-family: var(--mono); font-size: 13px; line-height: 1.72;
+  padding: 20px 22px; overflow-x: auto; border: 1px solid color-mix(in srgb, var(--code-fg) 14%, transparent);
+  box-shadow: var(--shadow);
+}
+.code-block pre { margin: 0; white-space: pre; }
+.c-key { color: var(--accent-2); }
+.c-str { color: var(--code-fg); }
+.c-com { color: var(--code-dim); font-style: italic; }
+.c-lit { color: var(--accent); }
+
+/* ---------- Install ----------------------------------------------------- */
+.install-steps { counter-reset: step; display: grid; gap: 20px; }
+.istep { display: grid; grid-template-columns: 34px 1fr; gap: 16px; align-items: start; }
+.istep::before {
+  counter-increment: step; content: counter(step);
+  font-family: var(--mono); font-size: 12px; font-weight: 700;
+  width: 30px; height: 30px; display: grid; place-items: center;
+  border: 1px solid var(--accent); border-radius: 50%; color: var(--accent);
+}
+.istep h3 { margin: 3px 0 8px; font-size: 19px; font-weight: 400; }
+.istep p { margin: 0 0 10px; color: var(--ink-soft); font-size: 16px; }
+
+/* ---------- Footer ------------------------------------------------------ */
+footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
+.foot-grid { display: flex; flex-wrap: wrap; gap: 22px; align-items: center; justify-content: space-between; }
+.foot-links { display: flex; flex-wrap: wrap; gap: 20px; font-family: var(--sans); font-size: 13px; }
+.foot-links a { text-decoration: none; border-bottom: 1px solid var(--rule); padding-bottom: 2px; }
+.foot-links a:hover { border-color: var(--accent); color: var(--accent); }
+.colophon { font-family: var(--sans); font-size: 12px; color: var(--ink-faint); letter-spacing: .04em; }
+
+[hidden] { display: none !important; }
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
+}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div class="wrap masthead-in">
+    <a class="brand" href="#top"><span class="brand-mark" aria-hidden="true"></span>Orchestrate</a>
+    <span class="masthead-issue" data-i18n="issue">Vol. 1 · Agent Orchestration · Est. 2026</span>
+    <div class="switches">
+      <div class="seg" role="group" aria-label="Language">
+        <button type="button" data-lang="en" aria-pressed="true">EN</button>
+        <button type="button" data-lang="vi" aria-pressed="false">VN</button>
+      </div>
+      <div class="seg" role="group" aria-label="Theme">
+        <button type="button" data-theme-set="light" aria-pressed="true" title="Light">☀</button>
+        <button type="button" data-theme-set="dark" aria-pressed="false" title="Dark">☾</button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main id="top">
+
+  <!-- ============ HERO ============ -->
+  <div class="hero wrap">
+    <p class="kicker" data-i18n="kicker">A Claude Code Skill · MIT Licensed</p>
+
+    <h1 class="headline">Orchestrate<br><em data-i18n="headlineEm">the whole crew.</em></h1>
+    <div class="headline-rule"></div>
+
+    <div class="hero-grid">
+      <div>
+        <p class="standfirst" data-i18n="standfirst">
+          One coordinator. Many agents. Orchestrate splits a job across live-verified coding-agent
+          runtimes and in-session subagents — routing each task by capability and risk, isolating
+          parallel writers in their own git worktrees, capturing every command, and refusing to
+          call the work done until an independent arbiter agrees.
+        </p>
+        <p class="byline" data-i18n="byline">Skill · version 1.4.0 · maintained by bestagentkits</p>
+
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#install" data-i18n="ctaInstall">Install the plugin →</a>
+          <a class="btn btn-ghost" href="https://github.com/bestagentkits/orchestrate" data-i18n="ctaSource">Read the source</a>
+        </div>
+      </div>
+
+      <aside class="specsheet">
+        <h3 data-i18n="specTitle">Specification</h3>
+        <dl>
+          <dt data-i18n="specCmd">Command</dt><dd>/orchestrate</dd>
+          <dt data-i18n="specKind">Kind</dt><dd data-i18n="specKindV">Skill · dev-tools</dd>
+          <dt data-i18n="specVer">Version</dt><dd>1.4.0</dd>
+          <dt data-i18n="specLic">License</dt><dd>MIT</dd>
+          <dt data-i18n="specIn">Input</dt><dd data-i18n="specInV">YAML · prose · --resume</dd>
+          <dt data-i18n="specOut">Output</dt><dd data-i18n="specOutV">report.md + capture</dd>
+        </dl>
+      </aside>
+    </div>
+
+    <div class="terminal" style="margin-top: 40px;">
+      <div class="terminal-bar">
+        <span class="tdot"></span><span class="tdot"></span><span class="tdot"></span>
+        <span class="terminal-title">claude code</span>
+      </div>
+      <div class="terminal-body">
+<pre><span class="t-prompt">›</span> <span class="t-cmd">/orchestrate</span> <span class="t-str">"research three caching strategies and compare them"</span>
+<span class="t-prompt">›</span> <span class="t-cmd">/orchestrate</span> <span class="t-str">"refactor the session API"</span> <span class="t-flag">--internal</span>
+<span class="t-prompt">›</span> <span class="t-cmd">/orchestrate</span> plans/jobs.yaml <span class="t-flag">--yes</span>
+<span class="t-prompt">›</span> <span class="t-cmd">/orchestrate</span> <span class="t-flag">--resume</span> plans/reports/orchestrate-260723-1442
+<span class="t-note">
+  → live runtime probe · 4 candidates verified
+  → 6 jobs · 2 stages · concurrency 2 · 3 worktrees
+  → arbiter: independent C3 route, cross-family
+</span></pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ LEDE ============ -->
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">01</span>
+        <h2 data-i18n="h2Why">Parallel agents are easy.<br>Trustworthy ones are not.</h2>
+      </div>
+      <div class="lede-grid">
+        <div class="lede lede--dropcap">
+          <p data-i18n="lede1">Fanning out work to several agents takes one loop. What it costs you is
+          everything that makes the result believable: two agents editing the same file, a runtime that
+          silently vanished, a model name that stopped existing last week, a permission prompt swallowed
+          by a headless process, and a cheerful summary claiming success nobody verified.</p>
+          <p data-i18n="lede2">Orchestrate treats those as the actual problem. Every route is resolved
+          from live evidence at execution time — never from a catalog written into a file. Every parallel
+          writer gets its own worktree. Every job records its command, its exit state, and its artifacts.
+          And nothing is reported as finished until a separate arbiter, on an independently selected route,
+          checks the claims against the evidence.</p>
+        </div>
+        <div>
+          <blockquote class="pull" data-i18n="pull">"Runtime and model catalogs drift. Resolve every route
+          from live execution-time evidence. Never treat a runtime, provider, model, alias, flag, or agent
+          seen in this file as currently available."</blockquote>
+          <p class="byline" style="margin-top:20px" data-i18n="pullAttr">— From the skill contract</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PIPELINE ============ -->
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">02</span>
+        <h2 data-i18n="h2Pipe">The seven-stage pipeline</h2>
+        <p class="sec-deck" data-i18n="deckPipe">Each stage has an owner, a gate, and an artifact.
+        A stage that cannot prove its evidence blocks the run rather than guessing past it.</p>
+      </div>
+
+      <div class="pipeline">
+        <article class="stage">
+          <div class="stage-n">01</div>
+          <h3 data-i18n="s1">Brainstorm &amp; intake</h3>
+          <p class="stage-body" data-i18n="s1b">Clarify the outcome, constraints, non-goals, and acceptance
+          evidence. Refuse any plan that would put secrets or private data into prompts. If orchestration
+          adds no real parallelism or arbiter value, say so and recommend a single agent instead.</p>
+        </article>
+
+        <article class="stage">
+          <div class="stage-n">02</div>
+          <h3 data-i18n="s2">Build the job graph</h3>
+          <p class="stage-body" data-i18n="s2b">Turn the outcome into jobs with explicit task, cwd, timeout,
+          expected output, and file ownership. <code>depends_on</code> forms the stages. Same-stage jobs run
+          concurrently only when their ownership and outputs do not overlap.</p>
+        </article>
+
+        <article class="stage">
+          <div class="stage-n">03</div>
+          <h3 data-i18n="s3">Discover, profile, route</h3>
+          <p class="stage-body" data-i18n="s3b">Build a live runtime inventory, profile each candidate's
+          permissions, isolation, capture and budgets, then resolve a route by capability and risk tier.
+          A missing, unauthenticated, or under-controlled candidate cannot satisfy a route.</p>
+        </article>
+
+        <article class="stage">
+          <div class="stage-n">04</div>
+          <h3 data-i18n="s4">Apply the safety gate</h3>
+          <p class="stage-body" data-i18n="s4b">Confirm every cwd, writable root, and expected side effect.
+          Least privilege by default; permission bypass off by default. Destructive, deployment, release,
+          or credentialed work needs explicit approval for that exact scope.</p>
+        </article>
+
+        <article class="stage">
+          <div class="stage-n">05</div>
+          <h3 data-i18n="s5">Dispatch &amp; capture</h3>
+          <p class="stage-body" data-i18n="s5b">Create worktrees before dispatch, start independent jobs up
+          to the concurrency limit, and update <code>state.json</code> on every transition. Capture the
+          redacted command, bounded stdout/stderr, exit status, wall time, and artifacts.</p>
+        </article>
+
+        <article class="stage">
+          <div class="stage-n">06</div>
+          <h3 data-i18n="s6">Arbiter review</h3>
+          <p class="stage-body" data-i18n="s6b">A separate judgment route — preferably a different model
+          family, disclosed when it isn't — compares every result against its expected output, runs the
+          declared checks, and flags contradictions, unsupported claims, and missing artifacts.</p>
+        </article>
+
+        <article class="stage">
+          <div class="stage-n">07</div>
+          <h3 data-i18n="s7">Report</h3>
+          <p class="stage-body" data-i18n="s7b">One <code>report.md</code> with per-job status, resolved
+          runtime and model, tiers, artifacts, errors, the arbiter verdict, reproduction commands, pending
+          worktree diffs, and the unresolved questions — listed plainly, last.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ROUTING ============ -->
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">03</span>
+        <h2 data-i18n="h2Route">Routed by capability, gated by risk</h2>
+        <p class="sec-deck" data-i18n="deckRoute">Two independent axes. Capability asks how much judgment
+        the task needs; risk asks how much damage a wrong answer can do. A job runs only where both floors
+        are met — otherwise it is marked blocked, never quietly downgraded.</p>
+      </div>
+
+      <div class="two-col">
+        <div class="tier-card">
+          <h3 data-i18n="capTitle">Capability tiers</h3>
+          <div class="tier"><code>C1</code><span data-i18n="c1"><b>Throughput.</b> Accurate search, extraction, summarisation, bounded repetitive changes — scout, docs, mechanical fan-out.</span></div>
+          <div class="tier"><code>C2</code><span data-i18n="c2"><b>Delivery.</b> Multi-file implementation judgment, test design, failure-path handling — normal implementation and tests.</span></div>
+          <div class="tier"><code>C3</code><span data-i18n="c3"><b>Judgment.</b> Deep trade-off analysis, conflict resolution, security reasoning, independent arbitration — architecture, review, audit, arbiter.</span></div>
+        </div>
+        <div class="tier-card">
+          <h3 data-i18n="riskTitle">Risk tiers</h3>
+          <div class="tier r-low"><code>R0</code><span data-i18n="r0"><b>Observe.</b> Read and report only. Explicit cwd, bounded timeout, captured result, no unnecessary write or shell grant.</span></div>
+          <div class="tier"><code>R1</code><span data-i18n="r1"><b>Scoped write.</b> Reversible edits in owned files. Scoped write boundary, tool restrictions, diff capture, no permission bypass.</span></div>
+          <div class="tier"><code>R2</code><span data-i18n="r2"><b>Isolated write.</b> Parallel, high-impact, untrusted, or hard-to-revert changes. Separate worktree, enforced sandbox where available, arbiter review.</span></div>
+          <div class="tier"><code>R3</code><span data-i18n="r3"><b>External / destructive.</b> Deploy, release, delete, credentialed side effects. Explicit approval, rollback plan — blocked when controls are unavailable.</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SAFETY ============ -->
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">04</span>
+        <h2 data-i18n="h2Safe">Defaults that assume something will go wrong</h2>
+      </div>
+      <div class="cards">
+        <article class="card">
+          <span class="card-icon" aria-hidden="true">🌿</span>
+          <h3 data-i18n="f1">Worktree isolation</h3>
+          <p data-i18n="f1b">One worktree per isolated job, branched from the accepted base ref. Never shared,
+          never silently reused. Integration is coordinator-owned and happens after the arbiter pass — a
+          worktree defers collisions, it does not resolve them.</p>
+        </article>
+        <article class="card">
+          <span class="card-icon" aria-hidden="true">⏱</span>
+          <h3 data-i18n="f2">External timeouts</h3>
+          <p data-i18n="f2b">Every CLI process gets a timeout enforced from outside. An internal timeout is
+          treated as accounting only, unless the harness has proven it actually cancels the work.</p>
+        </article>
+        <article class="card">
+          <span class="card-icon" aria-hidden="true">↺</span>
+          <h3 data-i18n="f3">Resumable runs</h3>
+          <p data-i18n="f3b">An interrupted run reloads its spec and state, keeps successful outputs, preserves
+          prior attempts, revalidates every live route, and redispatches only the jobs that were interrupted.</p>
+        </article>
+        <article class="card">
+          <span class="card-icon" aria-hidden="true">⛔</span>
+          <h3 data-i18n="f4">Fail loud, never guess</h3>
+          <p data-i18n="f4b">A timeout, a permission prompt, an unknown flag or model, or a failed check is a
+          failure. No silent retry, no substituted model name, no relabelled output.</p>
+        </article>
+        <article class="card">
+          <span class="card-icon" aria-hidden="true">🔒</span>
+          <h3 data-i18n="f5">Redacted capture</h3>
+          <p data-i18n="f5b">Secrets, tokens, keys and dotenv values are refused at intake and redacted from
+          prompts, commands, logs and reports. Capture stays inside the run directory.</p>
+        </article>
+        <article class="card">
+          <span class="card-icon" aria-hidden="true">📊</span>
+          <h3 data-i18n="f6">Advisory metrics</h3>
+          <p data-i18n="f6b">Each finished job appends one JSON line of history. Metrics can suggest a policy
+          change with evidence — they can never authorise one automatically.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ JOB SPEC ============ -->
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">05</span>
+        <h2 data-i18n="h2Spec">A job graph, in plain YAML</h2>
+        <p class="sec-deck" data-i18n="deckSpec">Write it once and rerun it. Free-form requests get the same
+        treatment — the coordinator writes the spec first, then dispatches from it. Placeholders are resolved
+        from live evidence at run time, never from memory.</p>
+      </div>
+
+      <div class="two-col">
+        <figure>
+          <figcaption data-i18n="figSpec">jobs.yaml</figcaption>
+          <div class="code-block">
+<pre><span class="c-key">version</span>: <span class="c-lit">1</span>
+<span class="c-key">concurrency</span>: <span class="c-lit">2</span>
+<span class="c-key">jobs</span>:
+  - <span class="c-key">id</span>: scout-session-api
+    <span class="c-key">runtime</span>: internal
+    <span class="c-key">task</span>: scout
+    <span class="c-key">cwd</span>: &lt;workspace-root&gt;
+    <span class="c-key">prompt</span>: <span class="c-str">"Inspect the session API
+      and report extension points."</span>
+    <span class="c-key">timeout</span>: 10m
+    <span class="c-key">expected_output</span>: <span class="c-str">"Files read +
+      recommended seams."</span>
+
+  - <span class="c-key">id</span>: independent-review
+    <span class="c-key">runtime</span>: &lt;verified-cli-runtime&gt;
+    <span class="c-key">fallback_runtime</span>: [&lt;verified-fallback&gt;]
+    <span class="c-key">task</span>: review
+    <span class="c-key">depends_on</span>: [scout-session-api]
+    <span class="c-key">importance</span>: high
+    <span class="c-key">isolation</span>: worktree
+    <span class="c-key">timeout</span>: 10m
+    <span class="c-key">expected_output</span>: <span class="c-str">"Verdict with checks
+      and unresolved risks."</span></pre>
+          </div>
+        </figure>
+
+        <figure>
+          <figcaption data-i18n="figOut">plans/reports/orchestrate-&lt;timestamp&gt;/</figcaption>
+          <div class="code-block">
+<pre>orchestrate-260723-1442/
+├── jobs.yaml          <span class="c-com"># the graph</span>
+├── runtimes.json      <span class="c-com"># live probe evidence</span>
+├── state.json         <span class="c-com"># per-transition state</span>
+├── report.md          <span class="c-com"># the deliverable</span>
+├── worktrees/
+│   └── &lt;job-id&gt;/      <span class="c-com"># isolated writes</span>
+└── &lt;job-id&gt;/
+    ├── command.txt    <span class="c-com"># redacted, CLI jobs</span>
+    ├── stdout.txt     <span class="c-com"># bounded</span>
+    ├── stderr.txt
+    ├── result.md      <span class="c-com"># internal jobs</span>
+    ├── status.json    <span class="c-com"># resolved route</span>
+    ├── artifacts/
+    └── attempt-&lt;n&gt;/   <span class="c-com"># preserved failures</span>
+
+orchestrate-history.jsonl <span class="c-com"># cross-run metrics</span></pre>
+          </div>
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ INSTALL ============ -->
+  <section id="install">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">06</span>
+        <h2 data-i18n="h2Install">Install</h2>
+        <p class="sec-deck" data-i18n="deckInstall">Orchestrate ships as a Claude Code plugin from its own
+        marketplace. Add the marketplace, install the plugin, restart Claude Code.</p>
+      </div>
+
+      <div class="two-col">
+        <div class="install-steps">
+          <div class="istep">
+            <div>
+              <h3 data-i18n="i1">Add the marketplace</h3>
+              <p data-i18n="i1b">Point Claude Code at this repository once.</p>
+            </div>
+          </div>
+          <div class="istep">
+            <div>
+              <h3 data-i18n="i2">Install the plugin</h3>
+              <p data-i18n="i2b">Pull <code>orchestrate</code> from the marketplace you just added.</p>
+            </div>
+          </div>
+          <div class="istep">
+            <div>
+              <h3 data-i18n="i3">Restart, then run it</h3>
+              <p data-i18n="i3b">Restart Claude Code so the skill registers, then invoke <code>/orchestrate</code>
+              with a job spec or a plain-language request.</p>
+            </div>
+          </div>
+          <div class="istep">
+            <div>
+              <h3 data-i18n="i4">Or copy the skill directly</h3>
+              <p data-i18n="i4b">No plugin needed — drop the skill folder into <code>.claude/skills/</code>
+              in your project, or <code>~/.claude/skills/</code> for every project.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="terminal">
+          <div class="terminal-bar">
+            <span class="tdot"></span><span class="tdot"></span><span class="tdot"></span>
+            <span class="terminal-title">install</span>
+          </div>
+          <div class="terminal-body">
+<pre><span class="t-note"># 1 · add the marketplace</span>
+<span class="t-prompt">›</span> <span class="t-cmd">/plugin marketplace add</span> bestagentkits/orchestrate
+
+<span class="t-note"># 2 · install</span>
+<span class="t-prompt">›</span> <span class="t-cmd">/plugin install</span> orchestrate@orchestrate
+
+<span class="t-note"># 3 · restart Claude Code, then</span>
+<span class="t-prompt">›</span> <span class="t-cmd">/orchestrate</span> <span class="t-str">"your request"</span>
+
+<span class="t-note"># — or, without the plugin system —</span>
+<span class="t-prompt">$</span> <span class="t-cmd">git clone</span> \
+    https://github.com/bestagentkits/orchestrate.git
+<span class="t-prompt">$</span> <span class="t-cmd">cp -R</span> orchestrate/plugins/orchestrate\
+    /skills/orchestrate <span class="t-flag">~/.claude/skills/</span></pre>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ LIMITS ============ -->
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">07</span>
+        <h2 data-i18n="h2Limits">What it is not</h2>
+        <p class="sec-deck" data-i18n="deckLimits">Stated plainly, because an orchestrator that oversells its
+        guarantees is worse than no orchestrator.</p>
+      </div>
+      <div class="lede-grid">
+        <div class="lede" style="font-size:17px">
+          <p style="margin-top:0" data-i18n="l1"><strong>Not a daemon.</strong> No scheduler, no dashboard, no
+          account pool, no provider adapter. It coordinates runtimes that already exist on your machine.</p>
+          <p data-i18n="l2"><strong>Not a sandbox.</strong> A git worktree prevents edit collisions between
+          agents. It does not isolate processes, the network, or the filesystem.</p>
+        </div>
+        <div class="lede" style="font-size:17px">
+          <p style="margin-top:0" data-i18n="l3"><strong>Not shared memory.</strong> Jobs share nothing
+          implicitly. Anything a downstream job needs must travel through an explicit dependency.</p>
+          <p data-i18n="l4"><strong>Not a stable catalog.</strong> CLI commands, models, auth and safety
+          behaviour drift constantly. Every run revalidates them from scratch — that is the point.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="wrap foot-grid">
+    <div class="foot-links">
+      <a href="https://github.com/bestagentkits/orchestrate">GitHub</a>
+      <a href="https://github.com/bestagentkits/orchestrate/blob/main/README.md">README</a>
+      <a href="https://github.com/bestagentkits/orchestrate/blob/main/plugins/orchestrate/skills/orchestrate/SKILL.md" data-i18n="fSkill">Skill contract</a>
+      <a href="https://github.com/bestagentkits/orchestrate/blob/main/LICENSE">MIT</a>
+    </div>
+    <p class="colophon" data-i18n="colophon">Set in Iowan Old Style &amp; system sans · Built for Claude Code · bestagentkits</p>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Vietnamese copy deck -------------------------------------- */
+  var VI = {
+    issue: "Số 1 · Điều phối tác tử · 2026",
+    kicker: "Một Claude Code Skill · Giấy phép MIT",
+    headlineEm: "cả đội tác tử.",
+    standfirst: "Một điều phối viên. Nhiều tác tử. Orchestrate chia việc ra nhiều runtime coding-agent đã được xác minh trực tiếp và các subagent trong phiên — định tuyến từng tác vụ theo năng lực và rủi ro, cô lập các job ghi song song trong git worktree riêng, ghi lại mọi câu lệnh, và không tuyên bố hoàn thành cho tới khi một trọng tài độc lập đồng ý.",
+    byline: "Skill · phiên bản 1.4.0 · duy trì bởi bestagentkits",
+    ctaInstall: "Cài đặt plugin →",
+    ctaSource: "Đọc mã nguồn",
+    specTitle: "Thông số",
+    specCmd: "Lệnh", specKind: "Loại", specKindV: "Skill · dev-tools",
+    specVer: "Phiên bản", specLic: "Giấy phép",
+    specIn: "Đầu vào", specInV: "YAML · mô tả · --resume",
+    specOut: "Đầu ra", specOutV: "report.md + bản ghi",
+
+    h2Why: "Chạy tác tử song song thì dễ.<br>Tin được kết quả mới khó.",
+    lede1: "Bung việc cho nhiều tác tử chỉ tốn một vòng lặp. Cái giá phải trả là tất cả những gì khiến kết quả đáng tin: hai tác tử sửa cùng một tệp, một runtime lặng lẽ biến mất, một tên model đã ngừng tồn tại từ tuần trước, một hộp thoại xin quyền bị nuốt mất trong tiến trình headless, và một bản tóm tắt vui vẻ tuyên bố thành công mà không ai kiểm chứng.",
+    lede2: "Orchestrate coi đó mới là vấn đề thật. Mọi tuyến định tuyến đều được xác định từ bằng chứng trực tiếp tại thời điểm chạy — không bao giờ từ một danh mục viết sẵn trong tệp. Mọi job ghi song song đều có worktree riêng. Mọi job đều lưu lại câu lệnh, trạng thái thoát và artifact. Và không gì được báo cáo là xong cho tới khi một trọng tài riêng biệt, trên một tuyến được chọn độc lập, đối chiếu các tuyên bố với bằng chứng.",
+    pull: "\"Danh mục runtime và model luôn trôi. Hãy xác định mọi tuyến từ bằng chứng tại thời điểm chạy. Đừng bao giờ coi một runtime, provider, model, alias, cờ hay agent thấy trong tệp này là hiện đang sẵn có.\"",
+    pullAttr: "— Trích hợp đồng của skill",
+
+    h2Pipe: "Quy trình bảy giai đoạn",
+    deckPipe: "Mỗi giai đoạn có người chịu trách nhiệm, một cổng kiểm soát và một artifact. Giai đoạn nào không chứng minh được bằng chứng thì chặn cả lượt chạy, thay vì đoán bừa rồi đi tiếp.",
+    s1: "Brainstorm &amp; tiếp nhận",
+    s1b: "Làm rõ kết quả mong muốn, ràng buộc, những gì không làm, và bằng chứng nghiệm thu. Từ chối mọi kế hoạch đưa bí mật hay dữ liệu riêng tư vào prompt. Nếu điều phối không mang lại song song hay giá trị trọng tài thực sự, hãy nói thẳng và đề xuất dùng một tác tử duy nhất.",
+    s2: "Dựng đồ thị công việc",
+    s2b: "Biến kết quả mong muốn thành các job có task, cwd, timeout, đầu ra kỳ vọng và quyền sở hữu tệp rõ ràng. <code>depends_on</code> tạo thành các tầng. Các job cùng tầng chỉ chạy song song khi quyền sở hữu và đầu ra không chồng lấn.",
+    s3: "Khám phá, lập hồ sơ, định tuyến",
+    s3b: "Dựng danh sách runtime trực tiếp, lập hồ sơ quyền hạn, mức cô lập, khả năng ghi nhận và ngân sách của từng ứng viên, rồi chọn tuyến theo tầng năng lực và rủi ro. Ứng viên thiếu, chưa xác thực hoặc kiểm soát yếu thì không đủ điều kiện nhận tuyến.",
+    s4: "Áp cổng an toàn",
+    s4b: "Xác nhận từng cwd, thư mục được ghi và tác dụng phụ dự kiến. Mặc định đặc quyền tối thiểu; mọi chế độ bỏ qua xin quyền đều tắt. Việc phá hủy, triển khai, phát hành hay dùng thông tin xác thực đều cần chấp thuận đúng phạm vi đó.",
+    s5: "Điều phối &amp; ghi nhận",
+    s5b: "Tạo worktree trước khi dispatch, chạy các job độc lập tới giới hạn concurrency, cập nhật <code>state.json</code> ở mọi chuyển trạng thái. Ghi lại câu lệnh đã che bí mật, stdout/stderr có giới hạn, trạng thái thoát, thời gian chạy và artifact.",
+    s6: "Trọng tài rà soát",
+    s6b: "Một tuyến phán xét riêng — ưu tiên khác họ model, và công bố rõ khi không được như vậy — đối chiếu từng kết quả với đầu ra kỳ vọng, chạy các bài kiểm tra đã khai báo, và chỉ ra mâu thuẫn, tuyên bố thiếu căn cứ, artifact bị thiếu.",
+    s7: "Báo cáo",
+    s7b: "Một tệp <code>report.md</code> gồm trạng thái từng job, runtime và model đã chốt, các tầng, artifact, lỗi, phán quyết trọng tài, lệnh tái lập, diff worktree còn chờ tích hợp, và các câu hỏi chưa có lời giải — liệt kê thẳng thắn, ở cuối.",
+
+    h2Route: "Định tuyến theo năng lực, kiểm soát theo rủi ro",
+    deckRoute: "Hai trục độc lập. Năng lực hỏi tác vụ cần bao nhiêu phán đoán; rủi ro hỏi một câu trả lời sai gây thiệt hại tới đâu. Job chỉ chạy khi đạt cả hai ngưỡng — nếu không thì bị đánh dấu blocked, tuyệt đối không âm thầm hạ chuẩn.",
+    capTitle: "Tầng năng lực",
+    c1: "<b>Thông lượng.</b> Tìm kiếm, trích xuất, tóm tắt chính xác và các thay đổi lặp có giới hạn — scout, tài liệu, fan-out cơ học.",
+    c2: "<b>Triển khai.</b> Phán đoán khi hiện thực nhiều tệp, thiết kế test, xử lý nhánh lỗi — hiện thực và test thông thường.",
+    c3: "<b>Phán đoán.</b> Phân tích đánh đổi sâu, giải quyết xung đột, lập luận bảo mật, trọng tài độc lập — kiến trúc, review, audit, arbiter.",
+    riskTitle: "Tầng rủi ro",
+    r0: "<b>Quan sát.</b> Chỉ đọc và báo cáo. cwd tường minh, timeout có giới hạn, kết quả được ghi lại, không cấp quyền ghi hay shell thừa.",
+    r1: "<b>Ghi có phạm vi.</b> Sửa đổi hoàn tác được trong các tệp thuộc sở hữu. Ranh giới ghi rõ ràng, hạn chế công cụ, ghi lại diff, không bỏ qua xin quyền.",
+    r2: "<b>Ghi có cô lập.</b> Thay đổi song song, tác động lớn, không tin cậy hoặc khó hoàn tác. Worktree riêng, sandbox khi có, và bắt buộc trọng tài rà soát.",
+    r3: "<b>Ra ngoài / phá hủy.</b> Deploy, release, xóa, dùng thông tin xác thực. Cần chấp thuận rõ ràng và kế hoạch rollback — bị chặn khi thiếu biện pháp kiểm soát.",
+
+    h2Safe: "Mặc định được thiết kế với giả định sẽ có sự cố",
+    f1: "Cô lập bằng worktree",
+    f1b: "Mỗi job cần cô lập có một worktree riêng, tách từ base ref đã thống nhất. Không dùng chung, không âm thầm tái sử dụng. Việc tích hợp thuộc về điều phối viên và chỉ diễn ra sau vòng trọng tài — worktree hoãn xung đột chứ không giải quyết nó.",
+    f2: "Timeout từ bên ngoài",
+    f2b: "Mọi tiến trình CLI đều có timeout áp từ bên ngoài. Timeout nội bộ chỉ được coi là số liệu kế toán, trừ khi harness đã chứng minh nó thật sự hủy được công việc.",
+    f3: "Chạy lại được",
+    f3b: "Một lượt chạy bị gián đoạn sẽ nạp lại spec và state, giữ các kết quả thành công, bảo toàn các lần thử trước, xác minh lại mọi tuyến trực tiếp, và chỉ chạy lại đúng những job bị gián đoạn.",
+    f4: "Hỏng thì báo, không đoán",
+    f4b: "Timeout, hộp thoại xin quyền, cờ hoặc model lạ, hay một bài kiểm tra thất bại đều là thất bại. Không âm thầm thử lại, không thay tên model, không dán nhãn lại đầu ra.",
+    f5: "Bản ghi đã che bí mật",
+    f5b: "Bí mật, token, khóa và giá trị dotenv bị từ chối ngay từ đầu vào và bị che trong prompt, câu lệnh, log và báo cáo. Bản ghi nằm gọn trong thư mục của lượt chạy.",
+    f6: "Số liệu chỉ mang tính tham khảo",
+    f6b: "Mỗi job hoàn tất ghi thêm một dòng JSON lịch sử. Số liệu có thể đề xuất thay đổi chính sách kèm bằng chứng — nhưng không bao giờ tự động cho phép thay đổi đó.",
+
+    h2Spec: "Đồ thị công việc, viết bằng YAML thuần",
+    deckSpec: "Viết một lần rồi chạy lại nhiều lần. Yêu cầu dạng mô tả tự do cũng được xử lý y hệt — điều phối viên viết spec trước rồi mới dispatch. Các placeholder được xác định từ bằng chứng trực tiếp lúc chạy, không lấy từ trí nhớ.",
+    figSpec: "jobs.yaml",
+    figOut: "plans/reports/orchestrate-&lt;timestamp&gt;/",
+
+    h2Install: "Cài đặt",
+    deckInstall: "Orchestrate được phát hành dưới dạng plugin Claude Code từ marketplace riêng. Thêm marketplace, cài plugin, khởi động lại Claude Code.",
+    i1: "Thêm marketplace",
+    i1b: "Trỏ Claude Code tới repository này một lần duy nhất.",
+    i2: "Cài plugin",
+    i2b: "Lấy <code>orchestrate</code> từ marketplace vừa thêm.",
+    i3: "Khởi động lại rồi chạy",
+    i3b: "Khởi động lại Claude Code để skill được đăng ký, rồi gọi <code>/orchestrate</code> với một job spec hoặc một yêu cầu bằng lời.",
+    i4: "Hoặc chép skill trực tiếp",
+    i4b: "Không cần plugin — chép thư mục skill vào <code>.claude/skills/</code> trong dự án, hoặc <code>~/.claude/skills/</code> để dùng cho mọi dự án.",
+
+    h2Limits: "Những gì nó không phải",
+    deckLimits: "Nói thẳng, vì một orchestrator hứa quá lời còn tệ hơn là không có orchestrator nào.",
+    l1: "<strong>Không phải daemon.</strong> Không scheduler, không dashboard, không pool tài khoản, không provider adapter. Nó điều phối các runtime đã có sẵn trên máy bạn.",
+    l2: "<strong>Không phải sandbox.</strong> Git worktree ngăn các tác tử giẫm chân nhau khi sửa tệp. Nó không cô lập tiến trình, mạng hay hệ thống tệp.",
+    l3: "<strong>Không có bộ nhớ chung.</strong> Các job không chia sẻ gì ngầm định. Mọi thứ job phía sau cần đều phải đi qua một dependency tường minh.",
+    l4: "<strong>Không phải danh mục ổn định.</strong> Lệnh CLI, model, xác thực và hành vi an toàn liên tục thay đổi. Mỗi lượt chạy đều xác minh lại từ đầu — và đó chính là điểm mấu chốt.",
+
+    fSkill: "Hợp đồng skill",
+    colophon: "Chữ Iowan Old Style &amp; sans hệ thống · Dựng cho Claude Code · bestagentkits"
+  };
+
+  /* Snapshot the English copy straight from the DOM on first load. */
+  var nodes = document.querySelectorAll("[data-i18n]");
+  var EN = {};
+  nodes.forEach(function (el) { EN[el.dataset.i18n] = el.innerHTML; });
+
+  function setLang(lang) {
+    var dict = lang === "vi" ? VI : EN;
+    nodes.forEach(function (el) {
+      var v = dict[el.dataset.i18n];
+      if (v != null) el.innerHTML = v;
+    });
+    document.documentElement.lang = lang === "vi" ? "vi" : "en";
+    document.querySelectorAll("[data-lang]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.lang === lang));
+    });
+    try { localStorage.setItem("orchestrate-lang", lang); } catch (e) {}
+  }
+
+  function setTheme(theme) {
+    document.documentElement.setAttribute("data-theme", theme);
+    document.querySelectorAll("[data-theme-set]").forEach(function (b) {
+      b.setAttribute("aria-pressed", String(b.dataset.themeSet === theme));
+    });
+    try { localStorage.setItem("orchestrate-theme", theme); } catch (e) {}
+  }
+
+  document.querySelectorAll("[data-lang]").forEach(function (b) {
+    b.addEventListener("click", function () { setLang(b.dataset.lang); });
+  });
+  document.querySelectorAll("[data-theme-set]").forEach(function (b) {
+    b.addEventListener("click", function () { setTheme(b.dataset.themeSet); });
+  });
+
+  /* Restore preferences; EN + light stay the documented defaults. */
+  var savedLang, savedTheme;
+  try {
+    savedLang = localStorage.getItem("orchestrate-lang");
+    savedTheme = localStorage.getItem("orchestrate-theme");
+  } catch (e) {}
+
+  setLang(savedLang === "vi" ? "vi" : "en");
+  if (savedTheme === "dark" || savedTheme === "light") {
+    setTheme(savedTheme);
+  } else if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
+    setTheme("dark");
+  } else {
+    setTheme("light");
+  }
+})();
+</script>
+</body>
+</html>

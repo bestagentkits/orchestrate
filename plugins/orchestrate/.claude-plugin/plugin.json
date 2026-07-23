@@ -1,0 +1,19 @@
+{
+  "name": "orchestrate",
+  "description": "Coordinate staged or parallel jobs across live-verified coding-agent runtimes and in-session subagents, using capability- and risk-based routing, worktree-isolated writes, resumable state, capture, safety gates, and independent arbiter review.",
+  "version": "1.4.0",
+  "author": {
+    "name": "bestagentkits"
+  },
+  "homepage": "https://github.com/bestagentkits/orchestrate",
+  "repository": "https://github.com/bestagentkits/orchestrate",
+  "license": "MIT",
+  "keywords": [
+    "orchestration",
+    "multi-agent",
+    "subagents",
+    "worktree",
+    "routing",
+    "parallel"
+  ]
+}
