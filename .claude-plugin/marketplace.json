@@ -8,7 +8,7 @@
   "plugins": [
     {
       "name": "orchestrate",
-      "description": "Coordinate staged or parallel jobs across live-verified coding-agent runtimes, coding-agent sessions, and in-session subagents, using capability- and risk-based routing, worktree-isolated writes, resumable state, capture, safety gates, and independent arbiter review.",
+      "description": "Coordinate staged or parallel jobs across live-verified coding-agent runtimes, coding-agent sessions, and in-session subagents through one runtime-adapter contract and a normalized event protocol, routed by deterministic capability- and risk-based policy with an optional provider-neutral System-1 decision plane for trace watching, failure triage, and pre-arbiter gating. Worktree isolation, resumable state, capture, safety gates, and independent arbiter review included.",
       "author": {
         "name": "bestagentkits"
       },
@@ -16,6 +16,9 @@
       "keywords": [
         "orchestration",
         "multi-agent",
+        "runtime-adapter",
+        "event-protocol",
+        "decision-plane",
         "subagents",
         "worktree",
         "routing",

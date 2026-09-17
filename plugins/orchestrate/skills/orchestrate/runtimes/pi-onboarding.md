@@ -4,7 +4,7 @@ This reference brings the Pi coding agent (`pi`) from missing or
 unauthenticated to `available` so that orchestrated jobs can run on it. It is
 a visible setup step that runs after discovery reported the gap, never inside
 discovery itself, and only for a candidate a job or the user asked for. The
-session and dispatch contract lives in [pi-sessions.md](pi-sessions.md).
+session and dispatch contract lives in [pi.md](pi.md).
 
 The portable-setup pattern here is adapted from
 the unofficial `zuey-pi-setup` repository (`github.com/mrgoonie/zuey-pi-setup`),

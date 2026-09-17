@@ -4,8 +4,9 @@ Operational reality for dispatching long headless CLI jobs (notably `codex
 exec`) from a **sandboxed or wrapped host** — IDE agent sandboxes such as Cursor,
 tmux-less shells, and terminals whose event stream the coordinator cannot see.
 These are execution mechanics, not route selection: routing stays owned by
-[model-routing.md](model-routing.md); live command/flag/model verification stays
-owned by [runtime-matrix.md](runtime-matrix.md).
+[routing-policy.md](routing-policy.md); live command, flag and model
+verification stays owned by [runtime-profile.md](runtime-profile.md); and
+acceptance stays owned by [verification.md](verification.md).
 
 Apply this reference whenever a job is expected to run longer than a few seconds,
 runs detached, or writes a required artifact.
@@ -67,8 +68,9 @@ Exit status and stderr both lie. Classify before failing a job.
 - Treat known transient stderr as noise, not failure: MCP `524` timeouts, model
   cache warm-up lines, malformed-agent-`toml` warnings, and similar startup
   chatter. Log them; do not abort on them.
-- A clean exit with an empty `result.md` is still a failure (see runtime-matrix
-  "Dispatch Result Verification"). Verify the artifact independently.
+- A clean exit with an empty `result.md` is still a failure. Verify the artifact
+  independently per [verification.md](verification.md): a process exit status is
+  not acceptance, and an empty declared artifact is a failure regardless of exit.
 
 ## Network-Dependent Jobs
 

@@ -1,11 +1,13 @@
-# Pi Sessions
+# Pi Adapter
 
+This note is the Pi implementation of
+[runtime-adapter-contract.md](../references/runtime-adapter-contract.md).
 `/orchestrate` can dispatch Pi coding-agent (`pi`) sessions as headless
 jobs and chain them through their session files. This reference explains how
 to probe, dispatch, continue, capture and bound those sessions. It sits on top
-of the evidence contract in [runtime-matrix.md](runtime-matrix.md) and
-[harness-profiles.md](harness-profiles.md); route selection stays in
-[model-routing.md](model-routing.md).
+of the evidence contract in [runtime-profile.md](../references/runtime-profile.md) and the
+adapter contract in [runtime-adapter-contract.md](../references/runtime-adapter-contract.md);
+route selection stays in [routing-policy.md](../references/routing-policy.md).
 
 Flags named here are the ones the installed help advertised when this
 reference was written. Pi changes between releases and user extensions add
@@ -157,7 +159,7 @@ offline.
 `pi --mode rpc` runs a long-lived session driven by JSONL commands on stdin:
 prompt, steer, follow-up, abort, state and session statistics, HTML export,
 session switch and fork. It is the native intervention channel described in
-[observation.md](observation.md), but only for a harness that holds stdin
+[observation.md](../references/observation.md), but only for a harness that holds stdin
 open and owns the process. The coordinator launches an argv and captures
 output; verify whether the active supervisor drives stdin before promising RPC
 intervention. When it does not, intervene by stopping the attempt through the

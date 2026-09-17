@@ -1,23 +1,23 @@
 ---
 name: orchestrate
-description: "Coordinate staged or parallel jobs across live-verified coding-agent runtimes, agent sessions, and in-session subagents, using capability- and risk-based routing, worktree-isolated writes, resumable state, capture, safety gates, and independent arbiter review. Onboards a missing Pi runtime (install, profile, authentication, kit projection) as a visible setup step when a job or the user asks for Pi."
+description: "Coordinate staged or parallel jobs across live-verified coding-agent runtimes, agent sessions, and in-session subagents through one runtime-adapter contract and a normalized event protocol, routed by deterministic capability- and risk-based policy with an optional provider-neutral System-1 decision plane that watches traces, triages failures, and gates independent arbiter review. Worktree isolation, resumable state, capture, and safety gates included; onboards a missing Pi runtime as a visible setup step when a job or the user asks for it."
 user-invocable: true
-when_to_use: "Invoke when work should be split across multiple headless runtimes, agent sessions, or in-session subagents, routed by task capability and risk, isolated where needed, and reviewed before handoff; also when Pi must be installed and set up before it can take orchestrated jobs."
+when_to_use: "Invoke when work should be split across multiple headless runtimes, agent sessions, or in-session subagents, routed by task capability and risk, isolated where needed, and reviewed before handoff; also when Pi must be installed and set up before it can take orchestrated jobs, or when a new runtime adapter needs to be probed and conformed."
 category: dev-tools
-keywords: [orchestrate, headless, multi-agent, internal, subagents, pi, pi-sessions, onboarding, live-routing, model-routing, capability, risk, worktree, resume, parallel, arbiter]
+keywords: [orchestrate, headless, multi-agent, runtime-adapter, event-protocol, decision-plane, subagents, pi, onboarding, live-routing, routing-policy, safety-policy, capability, risk, worktree, resume, parallel, arbiter, calibration]
 argument-hint: "<job-spec.yaml | task description | --resume <run-dir>> [--yes] [--internal]"
 license: MIT
 metadata:
   author: bestagentkits
-  version: "1.8.0"
+  version: "2.0.0"
 ---
 
 # Orchestrate
 
 Coordinate headless coding-agent jobs, agent sessions and in-session subagents
 through a staged, captured, resumable workflow. The skill owns routing and
-judgment; the coordinator owns deterministic plan state, process supervision
-and observable evidence. No service or dashboard is required.
+judgment; the coordinator owns deterministic plan state, process supervision and
+observable evidence. No service or dashboard is required.
 
 **Engine.** The coordinator path is canonical: it owns the run directory
 described in [job-spec.md](references/job-spec.md), and nothing in this skill
@@ -26,9 +26,9 @@ equivalent accelerator for the same contract — it must produce the same
 run-directory state, so a run started one way can be resumed the other, and no
 step depends on it being present.
 
-Runtime and model catalogs drift. Resolve every route from live evidence;
-never treat a runtime, provider, model, flag, or agent seen in this file or an
-older report as currently available.
+Runtime and model catalogs drift. Resolve every route from live evidence; never
+treat a runtime, provider, model, flag, or agent seen in this file or an older
+report as currently available.
 
 ## Inputs
 
@@ -54,30 +54,101 @@ authenticated its onboarding runs as a visible setup step before routing.
 
 ## Authority Map
 
-Keep durable facts in one place:
+Keep durable facts in one place. Every contract below has exactly one owner.
 
-- [model-routing.md](references/model-routing.md) is the **sole route-selection
-  authority**: capability tiers, risk tiers, task defaults, internal
-  selection, fallback qualification, and model-family independence.
-- [runtime-matrix.md](references/runtime-matrix.md): live candidate discovery,
-  probing, command verification, OS evidence, `<run-dir>/runtimes.json`.
-- [harness-profiles.md](references/harness-profiles.md): evidence schema for
-  permissions, isolation, capture, budgets, and enablement.
-- [internal-routing.md](references/internal-routing.md): in-session dispatch,
-  capture, timeout, and resume mechanics.
-- [pi-sessions.md](references/pi-sessions.md): Pi probing, session handles,
-  dispatch shape, capture, and intervention limits.
-- [pi-onboarding.md](references/pi-onboarding.md): installing, profiling,
-  authenticating, and verifying a Pi runtime that a job requires.
-- [job-spec.md](references/job-spec.md): the executable YAML and acceptance
-  contract; the run-state schema and validation it defines own exact machine
-  fields.
-- [observation.md](references/observation.md): observation, intervention,
-  diagnosis and evidence-based improvement.
+**Runtime layer**
+
+- [runtime-adapter-contract.md](references/runtime-adapter-contract.md): the
+  adapter interface, conformance, command construction, OS revalidation.
+- [runtime-profile.md](references/runtime-profile.md): live candidate discovery
+  including the classifier role, probing, `runtimes.json`, support states,
+  timeouts, and the annotation-only auto-profiler.
+- [event-protocol.md](references/event-protocol.md): the normalized event
+  envelope, event kinds, cursor semantics, the agent state machine, and the
+  redaction and provenance rules.
+- [runtimes/README.md](runtimes/README.md): the adapter index, the authoring
+  procedure, and the `pi`, `omp`, `agy` and `grok` probe targets.
+- [internal-routing.md](references/internal-routing.md): the internal adapter —
+  in-session dispatch, capture, timeout, resume, and agent resolution.
+
+**Policy layer**
+
+- [safety-policy.md](references/safety-policy.md): the **sole safety authority** —
+  risk tiers R0–R3 and their minimum controls, approval and authority, isolation
+  boundaries, secret handling, and the decisions no automated signal may make.
+- [routing-policy.md](references/routing-policy.md): the **sole route-selection
+  authority** — the deterministic hard filter, capability tiers C1–C3, task
+  floors, the floor-raising rule, ranking, fallbacks and reasoning controls.
+- [decision-plane.md](references/decision-plane.md): the **sole System-1
+  authority** — provider sourcing, call and input rules, the six decision tasks,
+  the decision trace, and the authority the plane does not have.
+
+**Execution layer**
+
+- [job-spec.md](references/job-spec.md): the executable YAML and the machine
+  fields acceptance consumes; the run-state schema and validation it defines own
+  exact machine fields. Acceptance itself is owned by
+  [verification.md](references/verification.md).
+- [output-layout.md](references/output-layout.md): the run-directory and
+  supervisor capture tree, decision artifacts, and export rules.
+- [observation.md](references/observation.md): observation, watchdog handoff,
+  intervention, diagnosis and evidence-based improvement.
+- [verification.md](references/verification.md): the three verification layers,
+  the **escalation matrix**, calibration, and the arbiter contract.
+- [graph-optimizer.md](references/graph-optimizer.md): graph reduction, the merge
+  algebra, and every refusal condition.
+
+**On-demand layer**
+
+- [failure-modes.md](references/failure-modes.md)
+- [dispatch-hardening.md](references/dispatch-hardening.md)
+- [metrics-and-self-improvement.md](references/metrics-and-self-improvement.md)
 
 When references disagree, stop and report the contract mismatch.
 
 ## Pipeline
+
+```text
+intake
+  ↓
+job graph                        (System 2: the planner authors it)
+  ↓
+live inventory + profile         runtime-profile.md
+  ↓
+═════════════ deterministic safety boundary ═════════════
+safety gate                      safety-policy.md — what may run
+  ↓
+hard filter                      routing-policy.md — eligibility, floors
+  ↓
+semantic rank                    decision-plane.md supplies signals → routing-policy.md applies them
+  ↓
+graph optimizer                  graph-optimizer.md — post-routing reduction
+  ↓
+═════════════════════════════════════════════════════════
+dispatch                         runtime-adapter-contract.md + verified profile
+  ↓
+normalized events                event-protocol.md
+  ↓
+trace watchdog                   decision-plane.md signals → observation.md rules
+  ↓
+triage / retry                   failure-modes.md
+  ↓
+deterministic checks             verification.md layer 1
+  ↓
+micro-arbiter gate               verification.md escalation matrix
+  ↓
+     accept ────────────────────────────────► report
+        │
+        └── escalate ──► C3 arbiter ──────────► report
+                         verification.md layer 3
+```
+
+**Which layer owns each hop.** The planner owns the graph. The safety gate owns
+whether anything runs. The hard filter owns eligibility and floors; the decision
+plane supplies scored signals and `floor_delta`, which may only raise a floor.
+The optimizer owns reduction, after routing. Deterministic checks own failure.
+The escalation matrix owns acceptance. The C3 arbiter owns judgment where
+escalated. Nothing probabilistic decides any of these.
 
 ### 1. Brainstorm and intake
 
@@ -107,19 +178,18 @@ When references disagree, stop and report the contract mismatch.
   permissions, requested controls and model catalog remain unchanged;
   invalidate on change or probe failure. Resume reconciles existing attempts
   before dispatch.
-- Build a live inventory per [runtime-matrix.md](references/runtime-matrix.md)
-  and profile each candidate per
-  [harness-profiles.md](references/harness-profiles.md); Pi candidates add
-  the evidence in [pi-sessions.md](references/pi-sessions.md).
+- Build a live inventory per [runtime-profile.md](references/runtime-profile.md);
+  Pi candidates add the evidence in [runtimes/pi.md](runtimes/pi.md).
 - When a pinned, fallback, or user-named candidate is missing or
   unauthenticated, run its onboarding as a visible setup step (Pi:
-  [pi-onboarding.md](references/pi-onboarding.md)) and probe again. Discovery
-  itself never installs or logs in, because a probe must not mutate the host.
+  [runtimes/pi-onboarding.md](runtimes/pi-onboarding.md)) and probe again.
+  Discovery itself never installs or logs in, because a probe must not mutate
+  the host.
 - Pass the live evidence and job classification to
-  [model-routing.md](references/model-routing.md); record the selected
+  [routing-policy.md](references/routing-policy.md); record the selected
   runtime, model or agent, capability tier, risk tier, controls, evidence
-  source, and fallback reason. Do not restate or override its task defaults,
-  tier floors, ranking, or fallback rules elsewhere.
+  source, applied `floor_delta`, and fallback reason. Do not restate or override
+  its task defaults, tier floors, ranking, or fallback rules elsewhere.
 - A missing, unauthenticated, unverified, or under-controlled candidate cannot
   satisfy a route. Re-profile fallbacks and rebuild their commands; never
   carry model names or flags between runtimes.
@@ -128,18 +198,29 @@ When references disagree, stop and report the contract mismatch.
 
 ### 4. Apply the safety gate
 
+Owned by [safety-policy.md](references/safety-policy.md). This is the single
+brief in this file; the authority is that file.
+
 - Confirm every job's cwd, allowed files, writable roots, and expected side
   effects. Use least-privilege permission and tool controls verified on the
   live runtime, with every permission-bypass mode off by default.
-- Record existing user authorization and its exact scope in `authority`.
-  Request approval only for an action outside that scope; prior authorization
-  stays valid without repeating `--yes`. A reference records the decision; it
-  cannot grant authority by itself.
+- Record existing user authorization and its exact scope in `authority`. Request
+  approval only for an action outside that scope; prior authorization stays
+  valid without repeating `--yes`.
 - Treat inherently auto-approved headless modes as constrained: read/report
   work or R2-isolated writes, never shared-tree destructive work. A worktree
   prevents edit collisions but is not an OS sandbox.
-- Give every CLI process an external timeout; internal timeouts are
-  accounting-only unless the current harness proves cancellation.
+- Keep destructive and credentialed external actions off prompt-only isolation,
+  and enable a permission bypass only when the user approved that exact action
+  and a stronger external boundary contains the residual risk. Onboarding
+  installs are visible and reversible; profile overwrites are snapshotted first;
+  credentials are entered only by the user.
+- Start with read-only or scoped-write behavior. Parallel writers use separate
+  worktrees and disjoint ownership, and failed output is preserved for diagnosis
+  rather than hidden or relabeled.
+- Capture stays under `plans/reports/orchestrate-<timestamp>/`, with secrets
+  redacted from prompts, commands, logs, decision traces, and reports.
+- Give every CLI process an external timeout.
 
 ### 5. Dispatch, observe and verify
 
@@ -151,50 +232,75 @@ When references disagree, stop and report the contract mismatch.
   Reconciliation handles existing work before dispatch; never bypass an
   uncertain attempt by starting it again manually.
 - Dispatch returned internal jobs through the native harness, preserving their
-  attempt IDs. Store handles and capture per
-  [internal-routing.md](references/internal-routing.md); accept only a settled
-  attempt with verified artifacts and checks.
+  attempt IDs, per [internal-routing.md](references/internal-routing.md).
 - Give Pi jobs a run-scoped session directory and store each session id as
   the resume handle; dependents continue or fork it per
-  [pi-sessions.md](references/pi-sessions.md).
+  [runtimes/pi.md](runtimes/pi.md).
 - Read the snapshot, the journal after a recorded cursor and bounded job output
   from a recorded byte offset, each per supervisor run with its own cursor;
   continue until every attempt is settled, not merely until an aggregate status
   reads failed.
 - Supervisor deadlines and bounded redacted capture survive the client exit
   on supported platforms; elsewhere process supervision is an explicit
-  capability gap, so use a qualified host/harness for jobs that need it.
+  capability gap.
 - Apply the observation and intervention contract in
-  [observation.md](references/observation.md): a quiet process is not proof
-  of a stall, and a cancelled request is not proof of a stopped writer.
+  [observation.md](references/observation.md), and the normalized event rules in
+  [event-protocol.md](references/event-protocol.md): a quiet process is not proof
+  of a stall, an exit without settlement evidence is `unsettled`, and a cancelled
+  request is not proof of a stopped writer.
 - Retry only within declared bounded policy after safe settlement and
-  unchanged fingerprints. Unknown flags/models need fresh discovery;
-  permission or external-effect failures need a scope-aware decision.
+  unchanged fingerprints, per [failure-modes.md](references/failure-modes.md).
 
-### 6. Run an arbiter review
+### 6. Verify and review
 
-- Wait for all runnable jobs to settle, then use a separate C3 judgment route
-  selected by [model-routing.md](references/model-routing.md).
-- Prefer independently configured or different-family review when live
-  evidence proves it; disclose a same-family fallback. A Pi arbiter counts as
-  independent only when its resolved model family differs.
-- Compare each result with `expected_output` and the original intent, run the
-  checks listed in the spec, and flag contradictions, unsupported claims,
-  missing artifacts, safety gaps, timeouts, and failed checks. Do not
-  summarize unverified work as complete.
+- Run the deterministic checks in [verification.md](references/verification.md)
+  layer 1. A failing check fails the attempt; no probabilistic signal overrules
+  it.
+- Consult the escalation matrix. Accept without a C3 call only when the
+  **recorded** risk tier is R0 or R1, a valid per-classifier calibration record
+  exists, and every other condition holds. Otherwise escalate.
+- **R2 and R3 always escalate to C3.** So do security, architecture, high-impact
+  implementation, external/destructive work, contradictory evidence, and any
+  malformed or low-confidence micro-arbiter result.
+- For C3, use a separate judgment route selected by
+  [routing-policy.md](references/routing-policy.md). Prefer independently
+  configured or different-family review when live evidence proves it; disclose a
+  same-family fallback.
+- A System-1 micro-arbiter verdict is **never** independent review evidence for a
+  C3 decision. It is a gate, not a reviewer.
 
 ### 7. Report
 
 - Write `plans/reports/orchestrate-<timestamp>/report.md`.
-- Include per-job status, capability/risk tier, resolved runtime and model or
-  agent, artifacts, errors, arbiter verdict, checks, reproduction commands,
-  worktree diffs awaiting integration, Pi session handles and exports,
-  onboarding actions taken, and unresolved questions.
+- Include per-job status, capability/risk tier with its derivation, resolved
+  runtime and model or agent, artifacts, errors, arbiter verdict, checks,
+  reproduction commands, worktree diffs awaiting integration, Pi session handles
+  and exports, onboarding actions taken, **the accepted-without-C3 count**, and
+  unresolved questions.
 - Record effective model/effort, startup/fork/communication time and cache
   telemetry when exposed, alongside retries and cost. Unknown cache cost is
   not zero. Metrics never lower capability/risk floors, override explicit
-  pins, or silently rewrite routing policy; keep per-attempt metrics in the
-  run and aggregate comparable records without changing their evidence.
+  pins, or silently rewrite routing policy.
+
+## Decision plane (optional)
+
+The System-1 decision plane is provider-neutral and optional. It prefers a
+`role: classifier` candidate already in `runtimes.json` that proves structured
+output and verified tool gating. Jev (TypeSafe) is the reference implementation
+and one optional provider — never a requirement.
+
+It supplies scored signals for the trace watchdog, failure triage, semantic
+routing, the micro-arbiter gate, profiling, and graph relations. It never
+authorizes a safety decision, sets `approval`, emits a dispatch, mutates shared
+state, weakens review independence, or replaces the C3 arbiter.
+
+**Degradation is normal.** With no eligible classifier, a timeout, or malformed
+output, the affected decision records `none` and deterministic policy decides.
+A classifier outage never blocks a run and never re-labels a runtime: `unverified`
+means the deterministic probe did not prove the behavior, not that the model did
+not confirm it.
+
+See [decision-plane.md](references/decision-plane.md).
 
 ## Pi Sessions
 
@@ -204,10 +310,11 @@ session id as its handle, and chains dependent jobs by continuing or forking
 the upstream session instead of re-sending its output. Headless Pi has no
 sandbox and no per-operation approval, so its writes belong in a
 coordinator-created worktree and it starts offline so a job cannot install
-packages mid-run. Probe budgets, flags, capture and the RPC intervention
-channel are in [pi-sessions.md](references/pi-sessions.md); install, profile,
-authentication and kit projection are in
-[pi-onboarding.md](references/pi-onboarding.md).
+packages mid-run.
+
+Probe budgets, flags, capture and the RPC intervention channel are in
+[runtimes/pi.md](runtimes/pi.md); install, profile, authentication and kit
+projection are in [runtimes/pi-onboarding.md](runtimes/pi-onboarding.md).
 
 ## Worktree Isolation
 
@@ -253,32 +360,16 @@ jobs:
 Do not replace placeholders from memory. Resolve and record them during that
 run.
 
-## Safety Defaults
-
-- Every job has an explicit cwd, timeout, expected output, and ownership;
-  capture stays under `plans/reports/orchestrate-<timestamp>/` with secrets
-  redacted from prompts, commands, logs, and reports.
-- Start with read-only or scoped-write behavior.
-- Permission bypasses stay off unless the user approved the exact action and
-  a stronger external boundary contains the residual risk.
-- Parallel writers use separate worktrees and disjoint ownership; failed
-  output is preserved for diagnosis, never hidden or relabeled.
-- Keep destructive and credentialed external actions off prompt-only
-  isolation. Onboarding installs are visible and reversible; profile
-  overwrites are snapshotted first; credentials are entered only by the user.
-
 ## On-demand References
 
-- `references/output-layout.md`: run-directory and supervisor capture tree,
-  plus the rules on exporting private graphs or job specs.
-- `references/arbiter-checklist.md`: load at step 6; the final report is
-  blocked until every question in it is answered.
-- `references/failure-modes.md`: load when a job fails, times out, requests
-  permission, is interrupted, or ownership or references disagree.
-- `references/dispatch-hardening.md`: load for long, detached, or
-  network-dependent jobs, and for hosts whose process tree reaps children.
-- `references/metrics-and-self-improvement.md`: load when comparing run
-  outcomes or considering a routing-policy change.
+- [failure-modes.md](references/failure-modes.md): load when a job fails, times
+  out, requests permission, is interrupted, or ownership or references disagree.
+- [dispatch-hardening.md](references/dispatch-hardening.md): load for long,
+  detached, or network-dependent jobs, and for hosts whose process tree reaps
+  children.
+- [metrics-and-self-improvement.md](references/metrics-and-self-improvement.md):
+  load when comparing run outcomes, auditing arbiter-gate telemetry, or
+  considering a routing-policy change.
 
 ## Limitations
 
@@ -297,6 +388,15 @@ run.
   the host and harness limits per route instead of assuming lifecycle support.
   With the AgentKit CLI installed, its supervisor requires Darwin, and
   discovery elsewhere does not imply lifecycle support.
+- **The decision plane is inert without an eligible classifier candidate**, which
+  is the normal state on a host whose only inventory entry is the internal
+  agent. This is by design: deterministic policy is sufficient on its own, and
+  the plane is never load-bearing for safety. Whether an installed classifier
+  will ever be eligible in practice is not verifiable from documentation.
+- **A System-1 verdict is not independent review.** It gates the arbiter; it does
+  not replace it, and it is never evidence of independence.
+- **R2 and above always receive arbiter review.** Acceptance without a C3 call is
+  limited to R0/R1 with a valid calibration record.
 
 ## Completion Report
 
@@ -308,6 +408,8 @@ End with:
 - Report: <plans/reports/orchestrate-.../report.md>
 - Jobs: <success>/<failed>/<blocked>
 - Arbiter: pass|fail|blocked
+- Accepted without C3: <n> of <total> (R0/R1 only)
+- Decision plane: enabled(<candidate>)|disabled|degraded(<reason>)
 - Checks: <commands or none>
 
 Unresolved questions:
