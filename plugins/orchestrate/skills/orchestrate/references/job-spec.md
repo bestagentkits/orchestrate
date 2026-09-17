@@ -7,9 +7,12 @@ semantics. It does not own a runtime roster, model catalog, or provider route.
 Resolve every runtime, model, agent, flag, and safety control from live evidence
 before dispatch:
 
-- [runtime-matrix.md](runtime-matrix.md): live candidate evidence;
-- [model-routing.md](model-routing.md): the sole selection policy;
-- [harness-profiles.md](harness-profiles.md): control evidence;
+- [runtime-profile.md](runtime-profile.md): live candidate evidence, the
+  `runtimes.json` schema, and control evidence;
+- [routing-policy.md](routing-policy.md): the sole selection policy;
+- [safety-policy.md](safety-policy.md): risk tiers and the safety gate;
+- [runtime-adapter-contract.md](runtime-adapter-contract.md): the adapter
+  interface and command construction;
 - [internal-routing.md](internal-routing.md): in-session agent mechanics.
 
 ## Schema
@@ -23,6 +26,8 @@ defaults:
   effect: observe
   approval: inherit
   capture: true
+calibration:
+  minimum_samples: <integer>        # run-policy floor for micro-arbiter calibration
 jobs:
   - id: string
     runtime: string
@@ -95,7 +100,7 @@ assigned risk tier. Worktree isolation prevents edit collisions; it does not
 claim to be an operating-system sandbox.
 
 `importance: high` raises capability and risk floors according to
-[model-routing.md](model-routing.md). This schema never names the resulting
+[routing-policy.md](routing-policy.md). This schema never names the resulting
 model or reasoning setting.
 
 ## Validation
@@ -114,6 +119,9 @@ Before stage construction:
 9. Bind external/destructive work to existing scoped user authorization; ask
    only when the required scope has not been authorized. Never infer permission
    from an arbitrary nonempty authority string.
+10. Run the graph optimizer pass per [graph-optimizer.md](graph-optimizer.md)
+    after routing: apply only approved reductions, then re-run checks 1–9 against
+    the reduced graph. A reduction that breaks any check above is refused.
 
 Unknown flags, models, or controls fail validation. Re-read live help or current
 official documentation; never guess a replacement.
@@ -148,11 +156,39 @@ and written atomically before the next dispatch:
       "attempts": 1,
       "startedAt": "<timestamp-or-null>",
       "endedAt": null,
-      "worktree": "<path-or-null>"
+      "worktree": "<path-or-null>",
+      "riskTier": "R0|R1|R2|R3",
+      "tierDerivation": ["<declared-attribute>"],
+      "floorDelta": 0,
+      "decisionTraceRef": "<decisions.jsonl-sequence-or-null>",
+      "acceptedWithoutC3": false
     }
   }
 }
 ```
+
+`riskTier` is a **deterministic derivation** from `tierDerivation`, recorded
+before execution per [safety-policy.md](safety-policy.md). It is never authored
+by a classifier. A missing or invalid value is treated as `R2`.
+
+`floorDelta` is the applied semantic adjustment. Only a non-negative value is
+recorded; a lowering signal is discarded, per
+[routing-policy.md](routing-policy.md).
+
+`decisionTraceRef` points at the enumerated trace in `decisions.jsonl`
+described by [decision-plane.md](decision-plane.md) and
+[output-layout.md](output-layout.md). `acceptedWithoutC3` records whether the
+escalation matrix in [verification.md](verification.md) accepted the attempt
+without a C3 arbiter call, and the report aggregates that count.
+
+`calibration.minimum_samples` is the **owner-fixed** floor for micro-arbiter
+calibration: the number of comparable C3-audited outcomes a per-classifier
+record must contain before the no-C3 path may be used at all. It is a run-policy
+field, set here and nowhere else, and it is independent of any record. A
+calibration record whose own `minimum` field does not equal this value is
+invalid, which is what stops a record from validating itself. The calibration
+rules that consume it — ground truth, per-classifier scoping, expiry, and
+fail-closed behaviour — are owned by [verification.md](verification.md).
 
 After live routing, add authorized `workspace_roots`, relative `owned_paths`,
 explicit `inputs`/`outputs` and a verified `invocation` for each CLI job. Keep
@@ -162,6 +198,10 @@ report file among outputs for read-only and native jobs so acceptance is
 inspectable.
 
 Preparation writes a private immutable resolved input plus the initial state.
+That input is final after any approved graph-optimizer reduction has been
+materialized into it; it is never rewritten afterwards. Resume reuses the
+recorded reduction and never re-optimizes.
+
 Advancement reconciles execution attempts and returns newly dispatchable native
 jobs plus supervisor run IDs. A completed CLI attempt waits for explicit
 artifact acceptance. Reconcile again after observed transitions; this is not an
@@ -249,17 +289,21 @@ keeps only a bounded prefix.
 
 ## Arbiter Contract
 
-The coordinator reports `Arbiter: pass` only when:
+The arbiter contract — the pass predicate, the independence requirement, the
+family-comparison rule, and the reporting consequence — is owned by
+[verification.md](verification.md). It is deliberately not restated here: this
+file owns the machine fields, and acceptance is not one of them.
 
-- every required job succeeded;
-- expected outputs and listed checks exist and pass;
-- outputs do not contain unresolved contradictions;
-- claims are supported by available evidence;
-- unresolved questions are absent or explicitly accepted.
+The only arbiter field this file defines is `acceptedWithoutC3` on the attempt
+record above, which records whether the escalation matrix accepted the attempt
+without a C3 call so the report can aggregate it.
 
 The arbiter route must satisfy the judgment floor in
-[model-routing.md](model-routing.md). Independence is verified from the live
-inventory, not asserted from a copied provider name.
+[routing-policy.md](routing-policy.md). Independence is verified from the live
+inventory, not asserted from a copied provider name. The independence check
+itself is owned by [verification.md](verification.md);
+[safety-policy.md](safety-policy.md) owns only the rule that no automated signal
+may weaken it.
 
 ## Illustrative Spec
 

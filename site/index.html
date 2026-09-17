@@ -420,9 +420,10 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
           One coordinator. Many agents. Orchestrate splits a job across live-verified coding-agent
           runtimes and in-session subagents — routing each task by capability and risk, isolating
           parallel writers in their own git worktrees, capturing every command, and refusing to
-          call the work done until an independent arbiter agrees.
+          call the work done until deterministic checks pass and — for anything above read-only or
+          scoped-write work — an independent arbiter agrees.
         </p>
-        <p class="byline" data-i18n="byline">Skill · version 1.8.0 · maintained by bestagentkits</p>
+        <p class="byline" data-i18n="byline">Skill · version 2.0.0 · maintained by bestagentkits</p>
 
         <div class="cta-row">
           <a class="btn btn-primary" href="#install" data-i18n="ctaInstall">Install the plugin →</a>
@@ -435,7 +436,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
         <dl>
           <dt data-i18n="specCmd">Command</dt><dd>/orchestrate</dd>
           <dt data-i18n="specKind">Kind</dt><dd data-i18n="specKindV">Skill · dev-tools</dd>
-          <dt data-i18n="specVer">Version</dt><dd>1.8.0</dd>
+          <dt data-i18n="specVer">Version</dt><dd>2.0.0</dd>
           <dt data-i18n="specLic">License</dt><dd>MIT</dd>
           <dt data-i18n="specIn">Input</dt><dd data-i18n="specInV">YAML · prose · --resume</dd>
           <dt data-i18n="specOut">Output</dt><dd data-i18n="specOutV">report.md + capture</dd>
@@ -456,7 +457,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
 <span class="t-note">
   → live runtime probe · 4 candidates verified
   → 6 jobs · 2 stages · concurrency 2 · 3 worktrees
-  → arbiter: independent C3 route, cross-family
+  → arbiter: independent C3 route (illustrative; family verified live)
 </span></pre>
       </div>
     </div>
@@ -478,8 +479,9 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
           <p data-i18n="lede2">Orchestrate treats those as the actual problem. Every route is resolved
           from live evidence at execution time — never from a catalog written into a file. Every parallel
           writer gets its own worktree. Every job records its command, its exit state, and its artifacts.
-          And nothing is reported as finished until a separate arbiter, on an independently selected route,
-          checks the claims against the evidence.</p>
+          And nothing is reported as finished until deterministic checks pass. Read-only and scoped-write
+          work may be accepted on a calibrated micro-arbiter verdict; everything above that goes to a
+          separate arbiter, on an independently selected route, to check the claims against the evidence.</p>
         </div>
         <div>
           <blockquote class="pull" data-i18n="pull">"Runtime and model catalogs drift. Resolve every route
@@ -548,8 +550,10 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
           <div class="stage-n">06</div>
           <h3 data-i18n="s6">Arbiter review</h3>
           <p class="stage-body" data-i18n="s6b">A separate judgment route — preferably a different model
-          family, disclosed when it isn't — compares every result against its expected output, runs the
-          declared checks, and flags contradictions, unsupported claims, and missing artifacts.</p>
+          family, disclosed when it isn't — compares each escalated result against its expected output,
+          runs the declared checks, and flags contradictions, unsupported claims, and missing artifacts.
+          R2, R3 and all judgment work always escalate here; read-only and scoped-write work may clear on
+          a calibrated micro-arbiter gate instead.</p>
         </article>
 
         <article class="stage">
@@ -585,7 +589,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
           <h3 data-i18n="riskTitle">Risk tiers</h3>
           <div class="tier r-low"><code>R0</code><span data-i18n="r0"><b>Observe.</b> Read and report only. Explicit cwd, bounded timeout, captured result, no unnecessary write or shell grant.</span></div>
           <div class="tier"><code>R1</code><span data-i18n="r1"><b>Scoped write.</b> Reversible edits in owned files. Scoped write boundary, tool restrictions, diff capture, no permission bypass.</span></div>
-          <div class="tier"><code>R2</code><span data-i18n="r2"><b>Isolated write.</b> Parallel, high-impact, untrusted, or hard-to-revert changes. Separate worktree, enforced sandbox where available, arbiter review.</span></div>
+          <div class="tier"><code>R2</code><span data-i18n="r2"><b>Isolated write.</b> Parallel, high-impact, untrusted, or hard-to-revert changes. Separate worktree or stronger isolation, enforced sandbox where available, explicit checks and arbiter review.</span></div>
           <div class="tier"><code>R3</code><span data-i18n="r3"><b>External / destructive.</b> Deploy, release, delete, credentialed side effects. Explicit approval, rollback plan — blocked when controls are unavailable.</span></div>
         </div>
       </div>
@@ -826,8 +830,8 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
     issue: "Số 1 · Điều phối tác tử · 2026",
     kicker: "Một Claude Code Skill · Giấy phép MIT",
     headlineEm: "cả đội tác tử.",
-    standfirst: "Một điều phối viên. Nhiều tác tử. Orchestrate chia việc ra nhiều runtime coding-agent đã được xác minh trực tiếp và các subagent trong phiên — định tuyến từng tác vụ theo năng lực và rủi ro, cô lập các job ghi song song trong git worktree riêng, ghi lại mọi câu lệnh, và không tuyên bố hoàn thành cho tới khi một trọng tài độc lập đồng ý.",
-    byline: "Skill · phiên bản 1.8.0 · duy trì bởi bestagentkits",
+    standfirst: "Một điều phối viên. Nhiều tác tử. Orchestrate chia việc ra nhiều runtime coding-agent đã được xác minh trực tiếp và các subagent trong phiên — định tuyến từng tác vụ theo năng lực và rủi ro, cô lập các job ghi song song trong git worktree riêng, ghi lại mọi câu lệnh, và không tuyên bố hoàn thành cho tới khi các bài kiểm tra tất định đạt, và — với mọi việc vượt trên công việc chỉ đọc hoặc ghi có phạm vi — một trọng tài độc lập đồng ý.",
+    byline: "Skill · phiên bản 2.0.0 · duy trì bởi bestagentkits",
     ctaInstall: "Cài đặt plugin →",
     ctaSource: "Đọc mã nguồn",
     specTitle: "Thông số",
@@ -838,7 +842,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
 
     h2Why: "Chạy tác tử song song thì dễ.<br>Tin được kết quả mới khó.",
     lede1: "Bung việc cho nhiều tác tử chỉ tốn một vòng lặp. Cái giá phải trả là tất cả những gì khiến kết quả đáng tin: hai tác tử sửa cùng một tệp, một runtime lặng lẽ biến mất, một tên model đã ngừng tồn tại từ tuần trước, một hộp thoại xin quyền bị nuốt mất trong tiến trình headless, và một bản tóm tắt vui vẻ tuyên bố thành công mà không ai kiểm chứng.",
-    lede2: "Orchestrate coi đó mới là vấn đề thật. Mọi tuyến định tuyến đều được xác định từ bằng chứng trực tiếp tại thời điểm chạy — không bao giờ từ một danh mục viết sẵn trong tệp. Mọi job ghi song song đều có worktree riêng. Mọi job đều lưu lại câu lệnh, trạng thái thoát và artifact. Và không gì được báo cáo là xong cho tới khi một trọng tài riêng biệt, trên một tuyến được chọn độc lập, đối chiếu các tuyên bố với bằng chứng.",
+    lede2: "Orchestrate coi đó mới là vấn đề thật. Mọi tuyến định tuyến đều được xác định từ bằng chứng trực tiếp tại thời điểm chạy — không bao giờ từ một danh mục viết sẵn trong tệp. Mọi job ghi song song đều có worktree riêng. Mọi job đều lưu lại câu lệnh, trạng thái thoát và artifact. Và không gì được báo cáo là xong cho tới khi các bài kiểm tra tất định đạt. Công việc chỉ đọc và ghi có phạm vi có thể được chấp nhận bằng phán quyết micro-arbiter đã hiệu chuẩn; mọi việc vượt trên đó sẽ do một trọng tài riêng biệt, trên một tuyến được chọn độc lập, đối chiếu các tuyên bố với bằng chứng.",
     pull: "\"Danh mục runtime và model luôn trôi. Hãy xác định mọi tuyến từ bằng chứng tại thời điểm chạy. Đừng bao giờ coi một runtime, provider, model, alias, cờ hay agent thấy trong tệp này là hiện đang sẵn có.\"",
     pullAttr: "— Trích hợp đồng của skill",
 
@@ -855,7 +859,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
     s5: "Điều phối, quan sát, kiểm chứng",
     s5b: "Tạo worktree trước khi dispatch, chạy các job độc lập tới giới hạn concurrency, cập nhật <code>state.json</code> ở mọi chuyển trạng thái. Ghi lại câu lệnh đã che bí mật, stdout/stderr có giới hạn, trạng thái thoát, thời gian chạy và artifact, và quan sát mọi attempt tới khi lắng xuống.",
     s6: "Trọng tài rà soát",
-    s6b: "Một tuyến phán xét riêng — ưu tiên khác họ model, và công bố rõ khi không được như vậy — đối chiếu từng kết quả với đầu ra kỳ vọng, chạy các bài kiểm tra đã khai báo, và chỉ ra mâu thuẫn, tuyên bố thiếu căn cứ, artifact bị thiếu.",
+    s6b: "Một tuyến phán xét riêng — ưu tiên khác họ model, và công bố rõ khi không được như vậy — đối chiếu từng kết quả đã được chuyển lên với đầu ra kỳ vọng, chạy các bài kiểm tra đã khai báo, và chỉ ra mâu thuẫn, tuyên bố thiếu căn cứ, artifact bị thiếu. R2, R3 và mọi công việc phán đoán luôn được chuyển lên đây; công việc chỉ đọc và ghi có phạm vi có thể được thông qua bằng cổng micro-arbiter đã hiệu chuẩn.",
     s7: "Báo cáo",
     s7b: "Một tệp <code>report.md</code> gồm trạng thái từng job, runtime và model đã chốt, các tầng, artifact, lỗi, phán quyết trọng tài, lệnh tái lập, diff worktree còn chờ tích hợp, và các câu hỏi chưa có lời giải — liệt kê thẳng thắn, ở cuối.",
 
@@ -868,7 +872,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
     riskTitle: "Tầng rủi ro",
     r0: "<b>Quan sát.</b> Chỉ đọc và báo cáo. cwd tường minh, timeout có giới hạn, kết quả được ghi lại, không cấp quyền ghi hay shell thừa.",
     r1: "<b>Ghi có phạm vi.</b> Sửa đổi hoàn tác được trong các tệp thuộc sở hữu. Ranh giới ghi rõ ràng, hạn chế công cụ, ghi lại diff, không bỏ qua xin quyền.",
-    r2: "<b>Ghi có cô lập.</b> Thay đổi song song, tác động lớn, không tin cậy hoặc khó hoàn tác. Worktree riêng, sandbox khi có, và bắt buộc trọng tài rà soát.",
+    r2: "<b>Ghi có cô lập.</b> Thay đổi song song, tác động lớn, không tin cậy hoặc khó hoàn tác. Worktree riêng hoặc cô lập mạnh hơn, sandbox khi có, kiểm tra tường minh và bắt buộc trọng tài rà soát.",
     r3: "<b>Ra ngoài / phá hủy.</b> Deploy, release, xóa, dùng thông tin xác thực. Cần chấp thuận rõ ràng và kế hoạch rollback — bị chặn khi thiếu biện pháp kiểm soát.",
 
     h2Safe: "Mặc định được thiết kế với giả định sẽ có sự cố",

@@ -1,10 +1,14 @@
 # Internal Runtime
 
 `runtime: internal` dispatches a job through the current harness's in-session
-subagent mechanism instead of spawning a CLI process. This file owns internal
-dispatch, capture, timeout, and resume mechanics. It does not own route
-selection; apply [model-routing.md](model-routing.md) to the live internal
-profile and any CLI fallbacks.
+subagent mechanism instead of spawning a CLI process. This file is the internal
+implementation of
+[runtime-adapter-contract.md](runtime-adapter-contract.md): the same contract,
+with the native dispatch mechanism in place of a process. It owns internal
+dispatch, capture, timeout, and resume mechanics, and the internal branch's
+agent resolution. It does not own route selection; apply
+[routing-policy.md](routing-policy.md) to the live internal profile and any CLI
+fallbacks.
 
 Internal dispatch is useful when the current session exposes a qualified
 specialist and subprocess startup would add little value. It is not a sandbox:
@@ -29,15 +33,26 @@ change the available set.
 
 ## Resolution Handoff
 
-Apply the **Internal Branch** in
-[model-routing.md](model-routing.md) to the live profile. That section alone
-owns explicit-agent validation, description-based matching, general-purpose
-fallback, model-independence handling, and the decision to use a CLI fallback
-or block.
+The internal branch of [routing-policy.md](routing-policy.md) delivers the live
+profile to this file. Agent resolution is owned here and follows these rules:
+
+- validate an explicit `agent:` against the **live** agent list; an on-disk
+definition is supporting evidence only;
+- otherwise match the job's task and expected output to live agent descriptions
+and declared tools, choosing the most specific qualified agent;
+- use a general-purpose agent only when it is present and meets the risk tier;
+- honor `model:` only when the live internal dispatch interface supports that
+exact selection; otherwise preserve the pin and use a qualified CLI route;
+- when model-family diversity or stronger isolation is required but cannot be
+proven internally, choose a verified CLI candidate or disclose a blocked
+fallback;
+- do not assume two internal agents use different model families unless live
+metadata proves it.
 
 This file receives the resolved agent and records it, plus any substitution,
 in `status.json`. It must not add task-to-agent defaults or concrete model
-fallbacks.
+fallbacks; those are routing concerns owned by
+[routing-policy.md](routing-policy.md).
 
 Persist the native dispatch receipt separately at
 `<run-dir>/<job-id>/native-<attempt-id>.json`: job/attempt ID, actual native

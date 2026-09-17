@@ -70,12 +70,37 @@ fallbacks or replacement agents produce a new attempt with refreshed route
 proof. Preserve the old attempt's partial output and worktree. Existing user
 authority persists within its recorded scope; a retry does not expand it.
 
+### Watchdog signals
+
+When the decision plane is enabled, its trace watchdog supplies scored evidence
+about the attempt — whether it looks stalled, whether accepted progress is
+happening, whether intervention is likely needed, and a recommended action.
+
+Treat that as evidence feeding a deterministic rule, never as the decision:
+
+| Watchdog signal | Deterministic action owned by this file |
+| --- | --- |
+| `continue` | Keep observing; take no action |
+| `steer` | Send a follow-up only when the live harness has proven `steer`, and record the reason |
+| `retry` | Apply the bounded retry policy in [job-spec.md](job-spec.md), only after confirmed settlement and unchanged fingerprints |
+| `fallback_runtime` | Re-run the full live gate and both floors for the fallback; never inherit flags, identifiers or controls |
+| `escalate` | Report to the operator with the evidence that produced the signal |
+| `abort` | Abort only with the settlement evidence below. A classifier verdict alone never aborts a writer |
+
+A watchdog verdict does not replace the settlement requirement: a quiet process
+is still not proof of a stall, and a cancel request is still not proof of a
+stopped writer. Record the signal, the action taken and the reason in the
+decision trace defined by [decision-plane.md](decision-plane.md).
+
 ## Diagnose, replay and measure
 
 A diagnosis bundle is a bounded persisted snapshot, one journal page, captured
-output and explicit missing-evidence fields. It excludes invocation/environment
-files. Read the journal and output surfaces to fetch omitted pages; the live
-identity check is separate. Review the bundle before sharing.
+output, the decision traces for the attempts involved, and explicit
+missing-evidence fields. It excludes invocation/environment files. Decision
+traces are enumerated and carry no free-text classifier output, but they are
+also excluded from a bundle unless reviewed, because they reference job inputs.
+Read the journal and output surfaces to fetch omitted pages; the live identity
+check is separate. Review the bundle before sharing.
 
 Replaying a journal reconstructs observations; it never re-executes tools or
 promises deterministic model behavior. Convert the failure into a regression
