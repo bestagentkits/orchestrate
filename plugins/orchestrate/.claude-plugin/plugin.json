@@ -1,7 +1,7 @@
 {
   "name": "orchestrate",
-  "description": "Coordinate staged or parallel jobs across live-verified coding-agent runtimes and in-session subagents, using capability- and risk-based routing, worktree-isolated writes, resumable state, capture, safety gates, and independent arbiter review.",
-  "version": "1.4.0",
+  "description": "Coordinate staged or parallel jobs across live-verified coding-agent runtimes, coding-agent sessions, and in-session subagents, using capability- and risk-based routing, worktree-isolated writes, resumable state, capture, safety gates, and independent arbiter review.",
+  "version": "1.8.0",
   "author": {
     "name": "bestagentkits"
   },
@@ -14,6 +14,7 @@
     "subagents",
     "worktree",
     "routing",
-    "parallel"
+    "parallel",
+    "pi"
   ]
 }
