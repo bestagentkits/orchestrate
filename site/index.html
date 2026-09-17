@@ -917,11 +917,20 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
   var EN = {};
   nodes.forEach(function (el) { EN[el.dataset.i18n] = el.innerHTML; });
 
+  /* The copy deck is author-controlled markup (<br>, <code>, <span>), so it has to
+     render as markup. Parse it into nodes and adopt them rather than assigning a
+     raw innerHTML sink. This is not a sanitizer: the deck is static and trusted. */
+  function setLocalized(el, markup) {
+    var parsed = new DOMParser().parseFromString(markup, "text/html");
+    while (el.firstChild) el.removeChild(el.firstChild);
+    while (parsed.body.firstChild) el.appendChild(document.adoptNode(parsed.body.firstChild));
+  }
+
   function setLang(lang) {
     var dict = lang === "vi" ? VI : EN;
     nodes.forEach(function (el) {
       var v = dict[el.dataset.i18n];
-      if (v != null) el.innerHTML = v;
+      if (v != null) setLocalized(el, v);
     });
     document.documentElement.lang = lang === "vi" ? "vi" : "en";
     document.querySelectorAll("[data-lang]").forEach(function (b) {
