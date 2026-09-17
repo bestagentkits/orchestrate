@@ -9,9 +9,10 @@ Routing is resolved at execution time. Runtime availability, model catalogs,
 aliases, permission controls, and CLI flags are volatile. Never treat a model
 name, provider catalog, or previous run as current evidence.
 
-Scope: CLI runtimes and the `runtime: internal` branch. Internal agents keep
-the model declared by their live agent definition; the coordinator selects an
-agent rather than setting its model.
+Scope: CLI runtimes and the `runtime: internal` branch. Preserve the internal
+agent's configured model unless the live dispatch interface permits selection
+and the user's pin or applicable routing policy requests it. Capability comes
+from that interface, not a blanket assumption about all internal agents.
 
 ## Inputs
 
@@ -135,6 +136,11 @@ For each job:
 7. Record the selected runtime, resolved model or agent, capability tier, risk
    tier, controls, evidence source, and fallback reason.
 
+Compare resolved model families, not executable names: two different harnesses
+may invoke the same provider/model. Unknown family metadata cannot establish
+different-family review. Record separately when independence comes only from
+a fresh, independently configured agent context.
+
 If no candidate qualifies, mark the job `blocked`. Do not silently weaken the
 risk posture or substitute a lower capability tier.
 
@@ -147,7 +153,8 @@ For `runtime: internal`:
   descriptions and declared tools, choosing the most specific qualified
   agent;
 - use a general-purpose agent only when it is present and meets the risk tier;
-- do not set `model:`; the resolved agent definition owns it;
+- honor `model:` only when the live internal dispatch interface supports that
+  exact selection; otherwise preserve the pin and use a qualified CLI route;
 - when model-family diversity or stronger isolation is required but cannot be
   proven internally, choose a verified CLI candidate or disclose a blocked
   fallback.

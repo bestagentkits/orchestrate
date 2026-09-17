@@ -422,7 +422,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
           parallel writers in their own git worktrees, capturing every command, and refusing to
           call the work done until an independent arbiter agrees.
         </p>
-        <p class="byline" data-i18n="byline">Skill · version 1.4.0 · maintained by bestagentkits</p>
+        <p class="byline" data-i18n="byline">Skill · version 1.8.0 · maintained by bestagentkits</p>
 
         <div class="cta-row">
           <a class="btn btn-primary" href="#install" data-i18n="ctaInstall">Install the plugin →</a>
@@ -435,7 +435,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
         <dl>
           <dt data-i18n="specCmd">Command</dt><dd>/orchestrate</dd>
           <dt data-i18n="specKind">Kind</dt><dd data-i18n="specKindV">Skill · dev-tools</dd>
-          <dt data-i18n="specVer">Version</dt><dd>1.4.0</dd>
+          <dt data-i18n="specVer">Version</dt><dd>1.8.0</dd>
           <dt data-i18n="specLic">License</dt><dd>MIT</dd>
           <dt data-i18n="specIn">Input</dt><dd data-i18n="specInV">YAML · prose · --resume</dd>
           <dt data-i18n="specOut">Output</dt><dd data-i18n="specOutV">report.md + capture</dd>
@@ -520,10 +520,11 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
 
         <article class="stage">
           <div class="stage-n">03</div>
-          <h3 data-i18n="s3">Discover, profile, route</h3>
+          <h3 data-i18n="s3">Discover, profile, route, onboard</h3>
           <p class="stage-body" data-i18n="s3b">Build a live runtime inventory, profile each candidate's
           permissions, isolation, capture and budgets, then resolve a route by capability and risk tier.
-          A missing, unauthenticated, or under-controlled candidate cannot satisfy a route.</p>
+          A missing, unauthenticated, or under-controlled candidate cannot satisfy a route. A pinned
+          runtime that is missing is onboarded as a visible setup step.</p>
         </article>
 
         <article class="stage">
@@ -536,10 +537,11 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
 
         <article class="stage">
           <div class="stage-n">05</div>
-          <h3 data-i18n="s5">Dispatch &amp; capture</h3>
+          <h3 data-i18n="s5">Dispatch, observe, verify</h3>
           <p class="stage-body" data-i18n="s5b">Create worktrees before dispatch, start independent jobs up
           to the concurrency limit, and update <code>state.json</code> on every transition. Capture the
-          redacted command, bounded stdout/stderr, exit status, wall time, and artifacts.</p>
+          redacted command, bounded stdout/stderr, exit status, wall time, and artifacts, and observe every
+          attempt until it settles.</p>
         </article>
 
         <article class="stage">
@@ -684,22 +686,25 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
           <figcaption data-i18n="figOut">plans/reports/orchestrate-&lt;timestamp&gt;/</figcaption>
           <div class="code-block">
 <pre>orchestrate-260723-1442/
-├── jobs.yaml          <span class="c-com"># the graph</span>
+├── jobs.yaml          <span class="c-com"># private resolved input</span>
+├── state.json         <span class="c-com"># attempts + acceptance</span>
+├── metrics.jsonl      <span class="c-com"># per-attempt outcomes</span>
 ├── runtimes.json      <span class="c-com"># live probe evidence</span>
-├── state.json         <span class="c-com"># per-transition state</span>
 ├── report.md          <span class="c-com"># the deliverable</span>
 ├── worktrees/
 │   └── &lt;job-id&gt;/      <span class="c-com"># isolated writes</span>
+├── supervisor/
+│   └── &lt;run-id&gt;/      <span class="c-com"># events.jsonl, output logs</span>
 └── &lt;job-id&gt;/
-    ├── command.txt    <span class="c-com"># redacted, CLI jobs</span>
-    ├── stdout.txt     <span class="c-com"># bounded</span>
+    ├── command.txt     <span class="c-com"># redacted, CLI jobs</span>
+    ├── stdout.txt      <span class="c-com"># bounded</span>
     ├── stderr.txt
-    ├── result.md      <span class="c-com"># internal jobs</span>
-    ├── status.json    <span class="c-com"># resolved route</span>
+    ├── result.md       <span class="c-com"># internal + native jobs</span>
+    ├── session.json    <span class="c-com"># Pi session handle</span>
+    ├── status.json     <span class="c-com"># resolved route</span>
+    ├── native-&lt;attempt-id&gt;.json  <span class="c-com"># dispatch receipt</span>
     ├── artifacts/
-    └── attempt-&lt;n&gt;/   <span class="c-com"># preserved failures</span>
-
-orchestrate-history.jsonl <span class="c-com"># cross-run metrics</span></pre>
+    └── attempt-&lt;n&gt;/    <span class="c-com"># preserved failures</span></pre>
           </div>
         </figure>
       </div>
@@ -822,7 +827,7 @@ orchestrate-history.jsonl <span class="c-com"># cross-run metrics</span></pre>
     kicker: "Một Claude Code Skill · Giấy phép MIT",
     headlineEm: "cả đội tác tử.",
     standfirst: "Một điều phối viên. Nhiều tác tử. Orchestrate chia việc ra nhiều runtime coding-agent đã được xác minh trực tiếp và các subagent trong phiên — định tuyến từng tác vụ theo năng lực và rủi ro, cô lập các job ghi song song trong git worktree riêng, ghi lại mọi câu lệnh, và không tuyên bố hoàn thành cho tới khi một trọng tài độc lập đồng ý.",
-    byline: "Skill · phiên bản 1.4.0 · duy trì bởi bestagentkits",
+    byline: "Skill · phiên bản 1.8.0 · duy trì bởi bestagentkits",
     ctaInstall: "Cài đặt plugin →",
     ctaSource: "Đọc mã nguồn",
     specTitle: "Thông số",
@@ -843,12 +848,12 @@ orchestrate-history.jsonl <span class="c-com"># cross-run metrics</span></pre>
     s1b: "Làm rõ kết quả mong muốn, ràng buộc, những gì không làm, và bằng chứng nghiệm thu. Từ chối mọi kế hoạch đưa bí mật hay dữ liệu riêng tư vào prompt. Nếu điều phối không mang lại song song hay giá trị trọng tài thực sự, hãy nói thẳng và đề xuất dùng một tác tử duy nhất.",
     s2: "Dựng đồ thị công việc",
     s2b: "Biến kết quả mong muốn thành các job có task, cwd, timeout, đầu ra kỳ vọng và quyền sở hữu tệp rõ ràng. <code>depends_on</code> tạo thành các tầng. Các job cùng tầng chỉ chạy song song khi quyền sở hữu và đầu ra không chồng lấn.",
-    s3: "Khám phá, lập hồ sơ, định tuyến",
-    s3b: "Dựng danh sách runtime trực tiếp, lập hồ sơ quyền hạn, mức cô lập, khả năng ghi nhận và ngân sách của từng ứng viên, rồi chọn tuyến theo tầng năng lực và rủi ro. Ứng viên thiếu, chưa xác thực hoặc kiểm soát yếu thì không đủ điều kiện nhận tuyến.",
+    s3: "Khám phá, lập hồ sơ, định tuyến, onboarding",
+    s3b: "Dựng danh sách runtime trực tiếp, lập hồ sơ quyền hạn, mức cô lập, khả năng ghi nhận và ngân sách của từng ứng viên, rồi chọn tuyến theo tầng năng lực và rủi ro. Ứng viên thiếu, chưa xác thực hoặc kiểm soát yếu thì không đủ điều kiện nhận tuyến. Runtime được ghim mà thiếu thì onboarding chạy như một bước thiết lập hiển thị.",
     s4: "Áp cổng an toàn",
     s4b: "Xác nhận từng cwd, thư mục được ghi và tác dụng phụ dự kiến. Mặc định đặc quyền tối thiểu; mọi chế độ bỏ qua xin quyền đều tắt. Việc phá hủy, triển khai, phát hành hay dùng thông tin xác thực đều cần chấp thuận đúng phạm vi đó.",
-    s5: "Điều phối &amp; ghi nhận",
-    s5b: "Tạo worktree trước khi dispatch, chạy các job độc lập tới giới hạn concurrency, cập nhật <code>state.json</code> ở mọi chuyển trạng thái. Ghi lại câu lệnh đã che bí mật, stdout/stderr có giới hạn, trạng thái thoát, thời gian chạy và artifact.",
+    s5: "Điều phối, quan sát, kiểm chứng",
+    s5b: "Tạo worktree trước khi dispatch, chạy các job độc lập tới giới hạn concurrency, cập nhật <code>state.json</code> ở mọi chuyển trạng thái. Ghi lại câu lệnh đã che bí mật, stdout/stderr có giới hạn, trạng thái thoát, thời gian chạy và artifact, và quan sát mọi attempt tới khi lắng xuống.",
     s6: "Trọng tài rà soát",
     s6b: "Một tuyến phán xét riêng — ưu tiên khác họ model, và công bố rõ khi không được như vậy — đối chiếu từng kết quả với đầu ra kỳ vọng, chạy các bài kiểm tra đã khai báo, và chỉ ra mâu thuẫn, tuyên bố thiếu căn cứ, artifact bị thiếu.",
     s7: "Báo cáo",
@@ -912,11 +917,20 @@ orchestrate-history.jsonl <span class="c-com"># cross-run metrics</span></pre>
   var EN = {};
   nodes.forEach(function (el) { EN[el.dataset.i18n] = el.innerHTML; });
 
+  /* The copy deck is author-controlled markup (<br>, <code>, <span>), so it has to
+     render as markup. Parse it into nodes and adopt them rather than assigning a
+     raw innerHTML sink. This is not a sanitizer: the deck is static and trusted. */
+  function setLocalized(el, markup) {
+    var parsed = new DOMParser().parseFromString(markup, "text/html");
+    while (el.firstChild) el.removeChild(el.firstChild);
+    while (parsed.body.firstChild) el.appendChild(document.adoptNode(parsed.body.firstChild));
+  }
+
   function setLang(lang) {
     var dict = lang === "vi" ? VI : EN;
     nodes.forEach(function (el) {
       var v = dict[el.dataset.i18n];
-      if (v != null) el.innerHTML = v;
+      if (v != null) setLocalized(el, v);
     });
     document.documentElement.lang = lang === "vi" ? "vi" : "en";
     document.querySelectorAll("[data-lang]").forEach(function (b) {

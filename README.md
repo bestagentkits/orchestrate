@@ -4,9 +4,10 @@
 
 **Multi-runtime agent orchestration for Claude Code.**
 
-Coordinate staged or parallel jobs across live-verified coding-agent runtimes and
-in-session subagents — routed by capability and risk, isolated in git worktrees,
-fully captured, resumable, and blocked until an independent arbiter agrees.
+Coordinate staged or parallel jobs across live-verified coding-agent runtimes,
+coding-agent sessions and in-session subagents — routed by capability and risk,
+isolated in git worktrees, fully captured, resumable, and blocked until an
+independent arbiter agrees.
 
 [**Live site →**](https://sites.agentwiki.cc/s/rDUlzFFGwTCGPT0jo59FB/) ·
 [Skill contract](plugins/orchestrate/skills/orchestrate/SKILL.md) ·
@@ -44,9 +45,9 @@ Orchestrate treats those as the actual problem:
 |---|-------|--------------------|
 | 1 | Brainstorm & intake | Outcome, constraints and acceptance evidence are explicit. Secrets are refused at the door. If orchestration adds nothing, it says so. |
 | 2 | Build the job graph | Jobs carry explicit `task`, `cwd`, timeout, expected output and file ownership. `depends_on` forms the stages. |
-| 3 | Discover, profile, route | Live runtime inventory → harness profile → capability/risk route, recorded with its evidence source. |
+| 3 | Discover, profile, route, onboard | Live runtime inventory → harness profile → capability/risk route, recorded with its evidence source. A pinned runtime that is missing is onboarded as a visible setup step. |
 | 4 | Apply the safety gate | Least privilege, permission bypass off, destructive/credentialed work needs approval for that exact scope. |
-| 5 | Dispatch & capture | Worktrees created before dispatch, `state.json` updated on every transition, output bounded and redacted. |
+| 5 | Dispatch, observe, verify | Worktrees created before dispatch, `state.json` updated on every transition, output bounded and redacted, every attempt observed until settled. |
 | 6 | Arbiter review | Independent C3 route compares each result to its expected output and runs the declared checks. |
 | 7 | Report | One `report.md` with statuses, resolved routes, artifacts, verdict, repro commands and unresolved questions. |
 
@@ -151,21 +152,31 @@ full schema.
 
 ```text
 plans/reports/orchestrate-<timestamp>/
-  jobs.yaml
-  runtimes.json
-  state.json
-  report.md
+  jobs.yaml            # private resolved input; do not export wholesale
+  state.json           # authoritative attempts and acceptance fingerprints
+  metrics.jsonl        # per-attempt observed outcomes
+  runtimes.json        # current discovery and control evidence
+  report.md            # checks, arbiter verdict, integration and questions
   worktrees/<job-id>/
+  supervisor/<supervisor-run-id>/
+    events.jsonl
+    output-<job-id>.log
   <job-id>/
-    command.txt      # CLI jobs only
-    stdout.txt       # CLI jobs only
-    stderr.txt       # CLI jobs only
-    result.md        # internal jobs only
+    command.txt          # CLI jobs
+    stdout.txt           # CLI jobs
+    stderr.txt           # CLI jobs
+    result.md            # internal and native jobs
+    session.json         # Pi jobs
     status.json
+    native-<attempt-id>.json
     artifacts/
     attempt-<n>/
-plans/reports/orchestrate-history.jsonl
 ```
+
+The tree above is a summary. [`output-layout.md`](plugins/orchestrate/skills/orchestrate/references/output-layout.md)
+owns the run-directory and supervisor contract, and
+[`job-spec.md`](plugins/orchestrate/skills/orchestrate/references/job-spec.md)
+owns the per-job capture contract.
 
 ## Reference files
 
@@ -173,17 +184,47 @@ The skill keeps each durable contract in exactly one place:
 
 | File | Owns |
 |---|---|
-| [`SKILL.md`](plugins/orchestrate/skills/orchestrate/SKILL.md) | The pipeline, safety defaults, output layout, arbiter checklist |
-| [`model-routing.md`](plugins/orchestrate/skills/orchestrate/references/model-routing.md) | Sole route-selection authority: capability/risk tiers, task defaults, fallback qualification |
-| [`runtime-matrix.md`](plugins/orchestrate/skills/orchestrate/references/runtime-matrix.md) | Live candidate discovery, probing, command verification, `runtimes.json` |
-| [`harness-profiles.md`](plugins/orchestrate/skills/orchestrate/references/harness-profiles.md) | Evidence schema for permissions, isolation, capture, budgets |
-| [`internal-routing.md`](plugins/orchestrate/skills/orchestrate/references/internal-routing.md) | In-session subagent dispatch, capture, timeout, resume mechanics |
-| [`job-spec.md`](plugins/orchestrate/skills/orchestrate/references/job-spec.md) | YAML schema and execution-state contract |
+| [`SKILL.md`](plugins/orchestrate/skills/orchestrate/SKILL.md) | The pipeline, dispatch, Pi session contract, safety defaults |
+| [`model-routing.md`](plugins/orchestrate/skills/orchestrate/references/model-routing.md) | Sole route-selection authority: capability/risk tiers, task defaults, internal selection, fallback qualification |
+| [`runtime-matrix.md`](plugins/orchestrate/skills/orchestrate/references/runtime-matrix.md) | Live candidate discovery, probing, optional CLI probes, `runtimes.json` |
+| [`harness-profiles.md`](plugins/orchestrate/skills/orchestrate/references/harness-profiles.md) | Evidence schema for permissions, isolation, observation, capture, budgets |
+| [`internal-routing.md`](plugins/orchestrate/skills/orchestrate/references/internal-routing.md) | In-session subagent dispatch, capture, timeout, intervention, resume mechanics |
+| [`pi-sessions.md`](plugins/orchestrate/skills/orchestrate/references/pi-sessions.md) | Pi probing, session handles, dispatch shape, capture and RPC intervention limits |
+| [`pi-onboarding.md`](plugins/orchestrate/skills/orchestrate/references/pi-onboarding.md) | Installing, profiling, authenticating and verifying a Pi runtime a job requires |
+| [`job-spec.md`](plugins/orchestrate/skills/orchestrate/references/job-spec.md) | YAML schema, run-state and resume contract, capture contract |
+| [`observation.md`](plugins/orchestrate/skills/orchestrate/references/observation.md) | Incremental observation, intervention, diagnosis, evidence-based improvement |
+| [`arbiter-checklist.md`](plugins/orchestrate/skills/orchestrate/references/arbiter-checklist.md) | The questions the final report is blocked until the arbiter answers |
+| [`failure-modes.md`](plugins/orchestrate/skills/orchestrate/references/failure-modes.md) | What to do when a job fails, times out, or asks for permission |
+| [`dispatch-hardening.md`](plugins/orchestrate/skills/orchestrate/references/dispatch-hardening.md) | Long, detached and network-dependent job mechanics on sandboxed hosts |
+| [`output-layout.md`](plugins/orchestrate/skills/orchestrate/references/output-layout.md) | Run-directory and supervisor capture tree |
+| [`metrics-and-self-improvement.md`](plugins/orchestrate/skills/orchestrate/references/metrics-and-self-improvement.md) | Comparing run outcomes and proposing routing-policy changes |
+
+## Upgrading from 1.4.x
+
+Nothing structural is required to upgrade, but three things changed:
+
+- **Metrics moved into the run.** 1.4.x appended to
+  `plans/reports/orchestrate-history.jsonl`. 1.8.0 writes a per-attempt
+  `metrics.jsonl` inside each run directory and aggregates only comparable
+  records when comparing runs. An existing history file is left in place and is
+  simply no longer written to.
+- **Agent sessions joined the runtime set.** Pi sessions are now a first-class
+  job target with their own probing, dispatch, capture and onboarding
+  references.
+- **Observation and intervention became explicit.** A run now declares what
+  liveness, activity and accepted progress mean for each job, instead of
+  treating a quiet process as finished work.
+
+The skill name, the `/orchestrate` command, and the `--yes`, `--internal` and
+`--resume` arguments are unchanged.
 
 ## What it is not
 
 - **Not a daemon.** No scheduler, dashboard, account pool, or provider adapter. It
   coordinates runtimes that already exist on your machine.
+- **Not a CLI dependency.** The coordinator owns the run directory described in
+  `job-spec.md`. If the AgentKit CLI is installed, `ak orchestrate` supplies a
+  deterministic engine for that same contract — it is never required.
 - **Not a sandbox.** A git worktree prevents edit collisions between agents. It does
   not isolate processes, the network, or the filesystem.
 - **Not shared memory.** Jobs share nothing implicitly; anything a downstream job needs

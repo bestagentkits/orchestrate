@@ -39,6 +39,14 @@ This file receives the resolved agent and records it, plus any substitution,
 in `status.json`. It must not add task-to-agent defaults or concrete model
 fallbacks.
 
+Persist the native dispatch receipt separately at
+`<run-dir>/<job-id>/native-<attempt-id>.json`: job/attempt ID, actual native
+handle, observed model when supplied, supported observation/intervention
+operations and timestamp. This is coordinator evidence; never hand-edit
+`state.json` to add an unsupported field. Resolve that saved handle through the
+same host on reconnect; a missing handle is uncertainty, not permission to
+launch a second writer.
+
 ## Dispatch Contract
 
 Dispatch one subagent per job. The prompt must include:
@@ -106,14 +114,16 @@ Example `status.json`:
 ```
 
 When the harness reports usage or model identity reliably, record it as
-observed metadata without changing the agent-owned model.
+observed metadata separately from the requested route.
 
 ## Model Ownership
 
-The resolved agent definition owns its model. Consequences:
+The live dispatch interface determines model ownership. Consequences:
 
-- do not set `model:` on an internal job;
-- a model-pinned job requires a live CLI route that supports the pin;
+- keep the agent-defined model by default;
+- use a model pin internally only when the current interface explicitly
+  exposes that option and its value is live-verified;
+- otherwise retain the pin and select a qualified CLI route that supports it;
 - do not assume two internal agents use different model families unless live
   metadata proves it;
 - if independent-family review is required but unprovable internally, use a
@@ -124,9 +134,11 @@ The resolved agent definition owns its model. Consequences:
 Unless the live harness exposes cancellation, internal timeouts are
 accounting-only. When a job exceeds its bound:
 
-- mark the attempt failed and `timedOut` for orchestration state;
+- mark the attempt timed out but unsettled until cancellation/completion is
+  confirmed; timeout accounting alone cannot free its ownership;
 - do not assume the underlying agent was force-killed;
-- ignore late output unless the user explicitly approves recovery;
+- preserve late output with its original attempt identity; accept it only
+  after checking current inputs, artifacts and cancellation outcome;
 - scope future prompts more tightly instead of relying on timeout enforcement.
 
 Never dispatch a second writer into the same ownership boundary while a timed
@@ -134,17 +146,26 @@ out internal agent may still be running.
 
 ## Resume
 
-Resume uses `state.json` like other runtimes:
+Resume uses durable plan state like other runtimes:
 
-- successful jobs are skipped and their `result.md` is reused;
-- interrupted jobs are re-dispatched as a new attempt;
-- no subagent session continuity is assumed;
+- revalidate input/base fingerprints and artifact hashes before reusing success;
+- reconnect to the recorded native handle when the live harness supports it;
+- inspect interrupted jobs before creating another attempt; unconfirmed
+  cancellation or lost handles keep writers blocked;
+- native continuity, follow-up, interrupt and model selection are independent
+  capabilities, each recorded as supported, unsupported or unverified;
 - prior partial evidence remains under `attempt-<n>/`;
 - runtime and agent availability are revalidated before the new attempt.
 
 ## Boundaries
 
-- Internal is fire-and-collect: one prompt in, one final result out.
+- Fire-and-collect is the fallback for minimal harnesses. When available,
+  capture intermediate events and use native follow-up/interrupt controls.
+- Persist job/attempt/native handle and the reason for each intervention.
+  Follow-up continues the same attempt only when scope and ownership match;
+  a changed task or replacement agent requires a new attempt.
+- Never claim a sent interrupt has stopped a writer until the harness confirms
+  a settled state. Never synthesize PID, PGID, exit code or heartbeat.
 - Multi-session teamwork and teammate messaging belong to the team workflow,
   not orchestrate.
 - A single uncomplicated scout usually does not justify orchestration overhead.

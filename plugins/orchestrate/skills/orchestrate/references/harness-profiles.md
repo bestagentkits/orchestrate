@@ -22,11 +22,15 @@ or current internal harness:
 | Headless entry | Verified command shape or internal dispatch mechanism |
 | Working directory | Whether cwd can be pinned and how it is enforced |
 | Model or agent discovery | Live listing mechanism and resolved choices; no copied catalog |
+| Provider identity | Resolved provider and model family when exposed; different harnesses may use the same model |
+| Extension and nested-agent controls | Enabled extensions and child-agent tools, enforcement and limits; include nested work in concurrency/budget accounting |
 | Permissions | Approval modes, tool allow/deny controls, and whether headless mode auto-approves |
 | Isolation | OS sandbox, container, worktree, prompt-only boundary, or none |
 | Budgets | Native turn/tool/time controls plus coordinator-owned external timeout |
 | Capture | Structured output, final-result capture, stderr, exit status, artifacts, and usage data |
 | Resume | Supported session or job-state behavior, if verified |
+| Observation | Durable handle, incremental cursor, event fidelity, last real progress, gaps and truncation |
+| Intervention | Native follow-up, interrupt, cancel confirmation, reconnect and per-job model selection; verify each separately |
 | Enablement | Instruction files and skill locations actually loaded for this run |
 | Host limits | OS, shell, quoting, path, or sandbox limitations that change the risk posture |
 | Evidence source | Live help/probe and current official documentation consulted for ambiguous behavior |
@@ -101,7 +105,18 @@ Prefer evidence in this order when otherwise-qualified routes remain:
 
 Lower capture quality does not automatically disqualify R0 advisory work, but
 it cannot support a load-bearing check whose result cannot be independently
-verified. Record truncation and preserve useful first/last sections.
+verified. Record truncation and which capture region is retained; never claim
+the tail survives when the supervisor keeps only a bounded prefix.
+
+Observation is an admission requirement tied to the job. A short advisory job
+can use final-result capture. A long-running writer requires a durable handle,
+bounded capture, identifiable completion and confirmed cancellation before
+replacement. Reject only the missing capabilities required by that job.
+
+Distinguish three signals: a verified live process is liveness; output/tool
+events are activity; accepted artifacts/checkpoints are progress. Silence is
+not failure and token volume is not progress. Unsupported observations remain
+unknown. Never require hidden reasoning or fabricate a completion percentage.
 
 ## Budget and Reliability Evidence
 
