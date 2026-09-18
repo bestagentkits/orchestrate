@@ -175,7 +175,8 @@ than to a third runtime, so promotion cannot become a search for a passing answe
 ## Recording
 
 Every promotion records `promotionOf` and `promotionTrigger` on the new attempt, using
-the attempt identity the attempt record already carries. Phase 5's trace joins them
+the attempt identity the attempt record already carries. The trace owned by
+[trace-and-logging.md](trace-and-logging.md) joins them
 through that identity.
 
 This document asserts **no trace field of its own**, because

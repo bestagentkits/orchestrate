@@ -298,5 +298,5 @@ grep -n 'verdict on another job' $S/verification.md
 grep -n 'weaker control for \*\*any\*\* tier' $S/verification.md
 grep -c '^| [0-9] ' $S/verification.md   # nine arbiter questions
 # boundary: the accept predicate must not appear in the plane's own doc
-grep -n 'accept without C3' $S/decision-plane.md && echo "FAIL: leaked" || echo "boundary clean"
+grep -ni 'accept without a c3 call' $S/decision-plane.md && echo "FAIL: leaked" || echo "boundary clean"
 ```

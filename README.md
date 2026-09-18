@@ -178,11 +178,15 @@ Restart Claude Code so the skill registers.
 
 ### As a plain skill
 
-No plugin system required — copy the skill folder into your project or your home config:
+No plugin system required — copy the skill folder into your project or your home config.
+The destination depends on the harness; `.claude/skills/` is only the Claude Code
+convention, and [the portability contract](plugins/orchestrate/skills/orchestrate/references/harness-portability.md)
+lists the others:
 
 ```bash
 git clone https://github.com/bestagentkits/orchestrate.git
-cp -R orchestrate/plugins/orchestrate/skills/orchestrate ~/.claude/skills/
+cp -R orchestrate/plugins/orchestrate/skills/orchestrate ~/.claude/skills/   # Claude Code
+# other harnesses read their own path, for example ~/.agents/skills/ or ~/.pi/skills/
 ```
 
 ## Usage
@@ -503,14 +507,16 @@ printf 'x [a](runtimes/pi-%s.md)\n' 'onboarding' > /tmp/valid.md
 grep -qE "\]\([^)]*references/pi-onboarding\.md\)" /tmp/valid.md && echo "CONTROL FAILED: valid flagged" || echo "control OK: valid relocated path not flagged"
 rm -f /tmp/stale.md /tmp/valid.md
 
-# 3. VERSION — exact surface counts, not merely "present".
+# 3. VERSION — exact surface counts, not merely "present", and no replaced version
+#    left behind. 2.1.0 is the version this release replaces, so it is denied too.
 test "$(grep -c '2\.2\.0' plugins/orchestrate/.claude-plugin/plugin.json)" = 1 || echo "FAIL plugin.json"
 test "$(grep -c '2\.2\.0' plugins/orchestrate/skills/orchestrate/SKILL.md)" = 1 || echo "FAIL SKILL.md"
 test "$(grep -c '2\.2\.0' site/index.html)" = 3 || echo "FAIL site (byline, spec table, vi i18n byline)"
-#    README.md is exempt from the stale checks: it keeps the historical
-#    1.8.x -> 2.0.0 upgrade section, and names 2.0.0/2.0.1 as the versions it came from.
-grep -rn '2\.0\.0\|2\.0\.1' plugins site .claude-plugin --include='*.json' --include='*.md' --include='*.html' && echo "FAIL stale version" || echo "version clean"
-grep -rn '1\.8\.0' plugins site .claude-plugin --include='*.json' --include='*.md' --include='*.html' && echo "FAIL stale version" || echo "version clean"
+#    AGENTS.md is a reader surface this release created, so it is swept too.
+#    README.md is exempt: it keeps the historical upgrade sections, which name
+#    1.8.x, 2.0.0, 2.0.1, 2.1.0 and 2.2.0 by design.
+grep -rn '2\.0\.0\|2\.0\.1\|2\.1\.0\|1\.8\.0' plugins site .claude-plugin AGENTS.md \
+  --include='*.json' --include='*.md' --include='*.html' && echo "FAIL stale version" || echo "version clean"
 
 # 4. REACHABILITY — every reference and adapter note is linked by a peer,
 #    whether the link is bare or path-qualified. A file must not count itself.
@@ -521,10 +527,14 @@ for f in plugins/orchestrate/skills/orchestrate/references/*.md \
     plugins/orchestrate/skills/orchestrate README.md || echo "UNREACHABLE $b"
 done
 
-# 5. BOUNDARY — the accept predicate has exactly one owner. The pattern is the
-#    canonical sentence that only verification.md is allowed to state.
-grep -rln 'Accept without a C3 call' plugins/orchestrate/skills/orchestrate/references
-#    Must print exactly: .../verification.md
+# 5. BOUNDARY — the accept predicate has exactly one owner, and a second owner must
+#    fail rather than merely print an extra line a human might not read.
+test "$(grep -rl 'Accept without a C3 call' plugins/orchestrate/skills/orchestrate/references | wc -l)" = 1 \
+  || echo "FAIL: the accept predicate has more than one owner"
+test "$(grep -rl 'Accept without a C3 call' plugins/orchestrate/skills/orchestrate/references)" \
+  = plugins/orchestrate/skills/orchestrate/references/verification.md \
+  || echo "FAIL: the accept predicate is not owned by verification.md"
+#    Must print nothing.
 
 # 6. PARITY — reader-facing surfaces must not state a weaker control for ANY tier.
 #    These clauses must survive every summary, per tier.
@@ -562,15 +572,20 @@ S=plugins/orchestrate/skills/orchestrate/references
 #    from SKILL.md's index row. The index row alone survives a broken cross-reference.
 for b in harness-portability.md benchmark-evidence.md fallback-policy.md trace-and-logging.md; do
   test -f "$S/$b" || echo "MISSING $b"
-  grep -rqE "\]\([^)]*/?$b\)" --include='*.md' --exclude="$b" \
+  grep -rqE "\]\([^)]*/?$b\)" --include='*.md' --exclude="$b" --exclude='SKILL.md' \
     plugins/orchestrate/skills/orchestrate README.md || echo "NO PEER LINK for $b"
 done
-#    Must print nothing.
+#    Must print nothing. SKILL.md is excluded above: its index row alone satisfies the
+#    search, and an index row surviving a broken cross-reference is the one failure
+#    this check exists to catch.
 
 # 10. PORTABILITY — the payload may never depend on a Claude-Code-only feature, and
 #     the one document REQUIRED to name them is excluded from the sweep.
-grep -rn 'context: fork\|^hooks:\|^allowed-tools:' plugins/orchestrate/skills/orchestrate \
-  | grep -v harness-portability.md || echo "portability clean"
+#     --exclude, not `grep -v`: a `grep -v` on path:line output also drops any line
+#     whose CONTENT names the excluded file, so a real violation annotated
+#     "see harness-portability.md" would have read as clean.
+grep -rn --exclude='harness-portability.md' 'context: fork\|^hooks:\|^allowed-tools:' \
+  plugins/orchestrate/skills/orchestrate || echo "portability clean"
 for f in "$S/harness-portability.md" README.md site/index.html; do
   grep -q 'npx skills add bestagentkits/orchestrate' "$f" || echo "CLI PATH MISSING in $f"
 done
@@ -580,14 +595,33 @@ done
 grep -q 'may not set eligibility' "$S/routing-policy.md" || echo "FAIL: benchmarks may gate"
 grep -q 'failed check never promotes' "$S/fallback-policy.md" || echo "FAIL: check may promote"
 grep -q 'authorization or permission failure never promotes' "$S/fallback-policy.md" || echo "FAIL: permission may promote"
+#    The reader surfaces state both rules too, and most readers meet them there first.
+grep -q 'cannot set eligibility, a floor, a tier, a control or an approval' README.md \
+  || echo "FAIL: benchmark-never-gates rule missing from README"
+grep -q 'failed check never promotes' README.md \
+  || echo "FAIL: check-may-promote rule missing from README"
 #    Must print nothing.
 
 # 12. CREDENTIALS — the four paths live in one owner, in order, and nowhere else;
 #     dotenv files stay untracked.
-grep -n 'process\.env\|project `\.env`\|`skills/` directory\|skill.s own `\.env`' "$S/decision-plane.md"
+#    Anchored to the ordered list, so prose that also mentions a location cannot
+#    inflate the count: only the four numbered locations are compared.
+paths=$(grep -nE '^[0-9]+\. (the process environment|the project `\.env`|the `skills/` directory|the skill.s own `\.env`)' "$S/decision-plane.md")
+test "$(printf '%s\n' "$paths" | wc -l)" = 4 || echo "FAIL: the credential order is not four locations"
+#    Order, asserted by the numbering: location N must be the Nth documented location.
+test "$(grep -cE '^1\. the process environment' "$S/decision-plane.md")" = 1 \
+  || echo "FAIL: credential location 1 is not the process environment"
+test "$(grep -cE '^2\. the project `\.env`' "$S/decision-plane.md")" = 1 \
+  || echo "FAIL: credential location 2 is not the project .env"
+test "$(grep -cE '^3\. the `skills/` directory' "$S/decision-plane.md")" = 1 \
+  || echo "FAIL: credential location 3 is not the skills directory"
+test "$(grep -cE '^4\. the skill.s own' "$S/decision-plane.md")" = 1 \
+  || echo "FAIL: credential location 4 is not the skill's own .env"
 echo -n "duplicated order (must be 1 file): "; grep -rl 'process\.env' "$S" | wc -l
 git check-ignore -q .env && echo ".env ignored" || echo "FAIL: .env not ignored"
-test "$(git ls-files | grep -c '\(^\|/\)\.env$')" = 0 || echo "FAIL: dotenv tracked"
+#    `.env.*` too: the ignore rule covers `.env` and `.env.*`, so a tracked
+#    `.env.local` must fail this as well.
+test "$(git ls-files | grep -cE '(^|/)\.env(\..*)?$')" = 0 || echo "FAIL: dotenv tracked"
 #    The pattern is assembled from parts so this block cannot match itself.
 keypat='echo .*TYPESAFE''_API_KEY'
 envpat='cat .*[.]env'
@@ -615,7 +649,12 @@ nums=$(grep -o '<span class="sec-num">[0-9]*</span>' site/index.html | grep -o '
 test "$(printf '%s\n' "$nums" | sort -u | wc -l)" = "$(printf '%s\n' "$nums" | wc -l)" \
   || echo "FAIL: duplicate sec-num"
 test "$(printf '%s\n' "$nums" | wc -l)" = 10 || echo "FAIL: sec-num sequence length"
-grep -nE '<img[^>]+src="https?:|<link[^>]+href="https?:|url\(https?:|srcset=|@font-face|<iframe|xlink:href="https?:' site/index.html \
+#    Sequence, not merely length: 01..10 in order.
+test "$(printf '%s\n' "$nums" | tr '\n' ' ')" = "01 02 03 04 05 06 07 08 09 10 " \
+  || echo "FAIL: sec-num is not the sequence 01..10"
+#    The page ships an inline <script>, so a remote script src is the most likely
+#    external request and must be in the pattern.
+grep -nE '<img[^>]+src="https?:|<link[^>]+href="https?:|<script[^>]+src="https?:|url\(https?:|@import[^;]*https?:|fetch\(|srcset=|@font-face|<iframe|poster="https?:|xlink:href="https?:' site/index.html \
   || echo "no external requests"
 
 # 15. CONSTANTS — each owner-fixed bound is fanned out to its readers.
@@ -625,13 +664,73 @@ done
 for f in "$S/fallback-policy.md" "$S/job-spec.md" README.md; do
   grep -q 'MAX_PROMOTIONS_MAX' "$f" || echo "CONSTANT FAIL MAX_PROMOTIONS_MAX in $f"
 done
+#    Presence is not enough: the values must agree, so a bound edited in one place and
+#    not in the others fails here. The numbers are extracted and compared rather than
+#    named, because a literal in this block would match README.md itself.
+owner_ttl=$(grep -oE 'CACHE_TTL_MAX_HOURS` \| `[0-9]+' "$S/benchmark-evidence.md" | grep -oE '[0-9]+$')
+readme_ttl=$(grep -oE 'CACHE_TTL_MAX_HOURS` = [0-9]+' README.md | grep -oE '[0-9]+$')
+test -n "$owner_ttl" && test "$owner_ttl" = "$readme_ttl" \
+  || echo "CONSTANT FAIL CACHE_TTL_MAX_HOURS value disagrees"
+owner_prom=$(grep -oE 'MAX_PROMOTIONS_MAX` \| `[0-9]+' "$S/fallback-policy.md" | grep -oE '[0-9]+$')
+readme_prom=$(grep -oE 'MAX_PROMOTIONS_MAX` = [0-9]+' README.md | grep -oE '[0-9]+$')
+test -n "$owner_prom" && test "$owner_prom" = "$readme_prom" \
+  || echo "CONSTANT FAIL MAX_PROMOTIONS value disagrees"
 #    Must print nothing.
 
 # 16. BRANDING — neither reader surface may brand itself for a single harness again.
 #     The pattern is assembled from parts and the comment above avoids the phrase,
 #     so this block cannot match itself.
 brand="Claude"" Code Skill"
-grep -n "$brand" README.md site/index.html && echo "FAIL: claude-only branding" || echo "branding clean"
+grep -n "$brand" README.md site/index.html .claude-plugin/marketplace.json \
+  && echo "FAIL: claude-only branding" || echo "branding clean"
+#    marketplace.json is one of the two surfaces that was actually wrong before, so it
+#    is inside the sweep rather than beside it. The pattern is assembled from parts
+#    because this block is itself a greppable surface of README.md.
+forbrand="for Claude"" Code"
+grep -n "$forbrand" README.md site/index.html .claude-plugin/marketplace.json \
+  && echo "FAIL: harness branding" || echo "harness-neutral"
+
+# 17. TREES — the normative run-directory tree and its two published copies must agree.
+#     A fence-anchored check could never pass (the copies are introduced by different
+#     text and one is HTML), and a whole-file search matches this block's own NORM list,
+#     so each tree is read from its OWN region and the three file lists are compared.
+python3 - <<'PY' || echo "FAIL: tree drift"
+import pathlib, re, sys
+NORM = ["jobs.yaml", "state.json", "metrics.jsonl", "runtimes.json", "decisions.jsonl",
+        "calibration.json", "trace.jsonl", "report.md", "worktrees/", "graph.json", "events.jsonl"]
+#    Built from parts: a literal fence here would truncate any extraction of this block
+#    that scans for a closing fence, which is how the sweep itself is read.
+FENCE = "`" * 3
+
+def readme_tree():
+    s = pathlib.Path("README.md").read_text(encoding="utf-8")
+    return re.search(FENCE + r'text\n(.*?)' + FENCE, s[s.index("### Output layout"):], re.S).group(1)
+
+def site_tree():
+    s = pathlib.Path("site/index.html").read_text(encoding="utf-8")
+    return re.search(r'<pre>(.*?)</pre>', s[s.index('data-i18n="figOut"'):], re.S).group(1)
+
+bad = False
+for name, text in (("README.md", readme_tree()), ("site/index.html", site_tree())):
+    missing = [f for f in NORM if f not in text]
+    if missing:
+        print(f"TREE DRIFT {name} missing: {missing}"); bad = True
+owner = pathlib.Path("plugins/orchestrate/skills/orchestrate/references/output-layout.md").read_text(encoding="utf-8")
+#    The owner is checked in its TREE region too, not file-wide: `trace.jsonl` also
+#    appears in prose, so a file-wide search stays green after the tree line is deleted.
+missing = [f for f in NORM if f not in re.search(FENCE + r'text\n(.*?)' + FENCE, owner, re.S).group(1)]
+if missing:
+    print(f"OWNER DRIFT output-layout.md tree missing: {missing}"); bad = True
+sys.exit(1 if bad else 0)
+PY
+
+# 18. LOCAL INSTALL OUTPUT — a duplicated payload must never be committable.
+#     These appear in the working tree after any install-path check, and `git add -A`
+#     would commit a stale copy of every owner document.
+for p in .agents .claude .pi skills-lock.json; do
+  test -e "$p" && { git check-ignore -q "$p" || echo "FAIL: $p is not ignored"; }
+done
+#    Must print nothing.
 ```
 
 **What these assertions do not do.** They prove that a sentence exists, a link

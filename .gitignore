@@ -12,3 +12,11 @@ plans/reports/
 
 # The durable benchmark cache: machine-local evidence, not a repository artifact.
 .orchestrate/
+
+# Local install output from the skills CLI and from harness conventions. Committing
+# any of these would duplicate the entire payload inside the repository, which is
+# exactly the copied-catalog failure the skill forbids everywhere else.
+.agents/
+.claude/
+.pi/
+skills-lock.json

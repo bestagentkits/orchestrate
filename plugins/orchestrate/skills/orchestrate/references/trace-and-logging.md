@@ -60,7 +60,9 @@ attempt ordinal of the attempt it replaced.
 | `run.start` | The run began. |
 | `run.end` | The run ended, with its terminal status. |
 | `probe` | A live availability or capability probe. |
-| `fetch` | A benchmark fetch attempt. This kind exists because phase 2 introduced a fetch that must be auditable on the same footing as a decision-plane call. |
+| `fetch` | A benchmark fetch attempt. This kind exists because
+  [benchmark-evidence.md](benchmark-evidence.md) introduced a fetch that must be auditable
+  on the same footing as a decision-plane call. |
 | `route` | A routing decision. |
 | `decide` | A decision-plane call. |
 | `gate` | A safety-gate evaluation. |

@@ -9,7 +9,8 @@
   decisions.jsonl       # enumerated decision traces; exclude unless reviewed
   calibration.json      # per-classifier threshold, sample count and expiry
   trace.jsonl           # the correlated record; redacted on write
-  report.md             # checks, arbiter verdict, integration and questions; carries traceStatus
+  report.md             # checks, arbiter verdict, integration and questions
+  worktrees/<job-id>/   # isolated writes, one worktree per parallel writer; carries traceStatus
   <job-id>/
     result.md           # internal final output when declared as artifact
     artifacts/

@@ -117,7 +117,10 @@ The constraints:
   call**, so the run records which content classes leave and to which host.
 - A fetch has a bounded timeout (`FETCH_TIMEOUT_SECONDS`) and a bounded response size
   (`FETCH_MAX_BYTES`).
-- A fetch is rate-limited to one request per source per run.
+- A fetch is rate-limited to **one request per (source, candidate, reasoning-effort
+  level) triple**, and a URL already fetched in this run is never re-fetched. The bound
+  is per triple, not per source: a single request per source per run would produce
+  exactly the one-row-per-model corpus that the rule below exists to rule out.
 - The fetch is performed **once per (candidate, reasoning-effort level) pair that
   survived the hard filter**, and never for a candidate the filter rejected. The
   effort ladder is the point of the evidence: the request is to choose effort *by
@@ -209,7 +212,8 @@ content — only provider, model, effort, the three signals, `sourceUrl` and
   the stale number**.
 - A refresh failure is recorded, not swallowed.
 
-**Correlation exemption.** Phase 5 requires every record in every artifact to carry
+**Correlation exemption.** The rule in [trace-and-logging.md](trace-and-logging.md)
+requires every record in every artifact to carry
 `runId`. The cache is a cross-run artifact, so its entries are exempt from that rule
 and carry `refreshedByRunId` as informational provenance instead. The exemption is
 deliberate and scoped to this one file.
