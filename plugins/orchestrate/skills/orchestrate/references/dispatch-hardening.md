@@ -1,8 +1,8 @@
 # Dispatch Hardening
 
-Operational reality for dispatching long headless CLI jobs (notably `codex
-exec`) from a **sandboxed or wrapped host** — IDE agent sandboxes such as Cursor,
-tmux-less shells, and terminals whose event stream the coordinator cannot see.
+Operational reality for dispatching long headless CLI jobs from a **sandboxed or
+wrapped host** — IDE agent sandboxes such as Cursor, tmux-less shells, and
+terminals whose event stream the coordinator cannot see.
 These are execution mechanics, not route selection: routing stays owned by
 [routing-policy.md](routing-policy.md); live command, flag and model
 verification stays owned by [runtime-profile.md](runtime-profile.md); and
@@ -19,8 +19,8 @@ stays inside the host's process tree and dies or is orphaned with it.
 
 - Prefer a **supervisor that owns its own session**: `tmux new-session -d`
   (verify `tmux` is installed first) or, on macOS, a `launchd` job. These detach
-  the worker from the coordinator's process tree so a long `codex exec` outlives
-  the host turn.
+  the worker from the coordinator's process tree so a long job outlives the host
+  turn.
 - Fall back to `nohup … &` + `disown` only when no session supervisor exists,
   and treat completion as unproven until the artifact is verified.
 - **Poll from outside the process tree.** Do not block the host turn waiting on
@@ -36,9 +36,9 @@ A wrapped terminal often does not surface the child's streaming events, so an
 "await the terminal" pattern silently misses completion.
 
 - Redirect structured output to a file, not the terminal: capture the JSONL
-  event stream to `stdout.txt` **and** write the final message to a file
-  (`codex exec … -o result.md` / the runtime's `--output-last-message`
-  equivalent, verified live).
+  event stream to `stdout.txt` **and** write the final message to a file, using
+  the runtime's own output-file or final-message option resolved from live help
+  and recorded in its profile. Never copy a flag from an example.
 - Treat the **file artifact** as the source of truth for completion, never the
   terminal scrollback.
 - If the coordinator must produce `result.md` from a runtime that only prints to
@@ -63,8 +63,9 @@ Stale state is the top cause of false `DONE`.
 
 Exit status and stderr both lie. Classify before failing a job.
 
-- Fail the job only on a real signal: the runtime's `turn.failed` event, a
-  non-zero process exit, or a **missing/empty required artifact**.
+- Fail the job only on a real signal: the runtime's own settlement or failure
+  event as recorded in its profile, a non-zero process exit, or a missing or empty
+  required artifact.
 - Treat known transient stderr as noise, not failure: MCP `524` timeouts, model
   cache warm-up lines, malformed-agent-`toml` warnings, and similar startup
   chatter. Log them; do not abort on them.

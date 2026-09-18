@@ -14,16 +14,25 @@ reproduce nondeterministic model execution.
 
 ## Arbiter-gate telemetry
 
-Record per attempt so the micro-arbiter can be calibrated and audited:
+Record **per attempt**, in the `attemptRecords[]` array owned by
+[job-spec.md](job-spec.md), so the micro-arbiter can be calibrated and audited.
+Job-level values are aggregates and are never the calibration source:
 
 | Field | Meaning |
 | --- | --- |
-| `riskTier` | the deterministic tier derived for the attempt |
+| `riskTier` | the attempt's recorded tier, `max(tierDerivation, riskFloorDelta)` |
+| `capabilityFloorDelta` | any capability-floor raise applied to the attempt |
+| `riskFloorDelta` | any risk-floor raise applied; a non-zero value forces C3 |
 | `microArbiterVerdict` | the signals returned, or `none` with a reason |
 | `acceptedWithoutC3` | whether the escalation matrix accepted with no C3 call |
 | `c3Verdict` | the C3 outcome when a C3 call occurred |
 | `c3EscalationReason` | which escalation clause fired |
 | `laterOutcome` | whether an accepted attempt later failed, and how |
+
+Because the record is per attempt, an attempt accepted on the micro-arbiter path
+and later contradicted by a C3 verdict on a retry remains pair able. A job-level
+`acceptedWithoutC3Count` cannot express that and must not be used for
+calibration.
 
 This telemetry is the **only** legitimate source of micro-arbiter calibration,
 and it is only usable as ground truth for samples that received a C3 audit. See
