@@ -59,7 +59,7 @@ checks, and answers the arbiter questions below.
 Accept without a C3 call only when **all** hold:
 
 1. the **attempt's recorded** risk tier is `R0` or `R1`, **and** no risk-floor
-   `floor_delta` was applied to it;
+   raise (`riskFloorDelta`) was applied to it;
 2. `importance: normal`;
 3. every Layer 1 deterministic check passed and the attempt is `settled`;
 4. a **valid calibration record** exists for the classifier candidate in use

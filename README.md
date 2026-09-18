@@ -279,11 +279,16 @@ owner–contract map; it is an adapter note like any other.
 The skill name, the `/orchestrate` command, and the `--yes`, `--internal` and
 `--resume` arguments are unchanged.
 
-### From 2.0.0 to 2.0.1
+### From 2.0.0 to 2.1.0
 
-A patch release that closes two defects in the acceptance gate. No path changes
-and no interface changes. If you invoke `/orchestrate`, every change below only
-makes the gate stricter:
+A defect-fix release that closes two holes in the acceptance gate and tightens
+several allowances. No file path changes, and the `/orchestrate` command, its
+arguments and the `jobs.yaml` schema are unchanged, so an existing spec still
+validates. It is a minor rather than a patch release because two things a reader or
+a tool may depend on did change: `state.json` records acceptance per attempt, and
+a job whose risk floor a semantic signal raises now escalates to C3.
+
+If you invoke `/orchestrate`, every change below only makes the gate stricter:
 
 - **A risk-floor raise now reaches the field the gate reads.** The semantic
   router's adjustment is recorded as two separate deltas,
@@ -315,7 +320,9 @@ makes the gate stricter:
   with none, the plane is disabled for the run.
 - **Acceptance is recorded per attempt.** `state.json` gains `attemptRecords[]` and
   the job-level fields become aggregates, because calibration needs the
-  per-attempt pairing.
+  per-attempt pairing. The job-level `floorDelta` is replaced by the per-attempt
+  `capabilityFloorDelta` and `riskFloorDelta`, which are recorded separately
+  because only the risk delta changes the tier and forces a C3 call.
 
 ### From 1.4.x to 1.8.0
 
@@ -365,11 +372,12 @@ grep -qE "\]\([^)]*references/pi-onboarding\.md\)" /tmp/valid.md && echo "CONTRO
 rm -f /tmp/stale.md /tmp/valid.md
 
 # 3. VERSION — exact surface counts, not merely "present".
-test "$(grep -c '2\.0\.1' plugins/orchestrate/.claude-plugin/plugin.json)" = 1 || echo "FAIL plugin.json"
-test "$(grep -c '2\.0\.1' plugins/orchestrate/skills/orchestrate/SKILL.md)" = 1 || echo "FAIL SKILL.md"
-test "$(grep -c '2\.0\.1' site/index.html)" = 3 || echo "FAIL site (byline, spec table, vi i18n byline)"
-#    README.md is exempt: it keeps the historical 1.8.x -> 2.0.0 upgrade section.
-grep -rn '2\.0\.0' plugins site .claude-plugin --include='*.json' --include='*.md' --include='*.html' && echo "FAIL stale version" || echo "version clean"
+test "$(grep -c '2\.1\.0' plugins/orchestrate/.claude-plugin/plugin.json)" = 1 || echo "FAIL plugin.json"
+test "$(grep -c '2\.1\.0' plugins/orchestrate/skills/orchestrate/SKILL.md)" = 1 || echo "FAIL SKILL.md"
+test "$(grep -c '2\.1\.0' site/index.html)" = 3 || echo "FAIL site (byline, spec table, vi i18n byline)"
+#    README.md is exempt from the stale checks: it keeps the historical
+#    1.8.x -> 2.0.0 upgrade section, and names 2.0.0/2.0.1 as the versions it came from.
+grep -rn '2\.0\.0\|2\.0\.1' plugins site .claude-plugin --include='*.json' --include='*.md' --include='*.html' && echo "FAIL stale version" || echo "version clean"
 grep -rn '1\.8\.0' plugins site .claude-plugin --include='*.json' --include='*.md' --include='*.html' && echo "FAIL stale version" || echo "version clean"
 
 # 4. REACHABILITY — every reference and adapter note is linked by a peer,
@@ -398,8 +406,14 @@ done
 #    Must print nothing.
 
 # 7. STUBS — unverified adapters stay unmistakably non-normative.
-grep -L 'Status: unverified — not a support claim, not in inventory' \
-  plugins/orchestrate/skills/orchestrate/runtimes/{claude,codex,gemini,opencode,aider}.md
+#    A loop rather than `grep -L`, whose exit status is not a pass/fail signal:
+#    GNU grep returns 0 when files are listed, so a wrapper would read the opposite
+#
+#    result. The loop fails loudly on a missing banner instead.
+for f in plugins/orchestrate/skills/orchestrate/runtimes/{claude,codex,gemini,opencode,aider}.md; do
+  grep -q 'Status: unverified — not a support claim, not in inventory' "$f" \
+    || echo "STUB FAIL $f"
+done
 #    Must print nothing.
 
 # 8. SITE I18N — every data-i18n key in the markup has a Vietnamese entry, so a

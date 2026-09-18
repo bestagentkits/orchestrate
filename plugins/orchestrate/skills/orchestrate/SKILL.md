@@ -9,7 +9,7 @@ argument-hint: "<job-spec.yaml | task description | --resume <run-dir>> [--yes] 
 license: MIT
 metadata:
   author: bestagentkits
-  version: "2.0.1"
+  version: "2.1.0"
 ---
 
 # Orchestrate
@@ -189,7 +189,7 @@ probabilistic decides any of these.
 - Pass the live evidence and job classification to
   [routing-policy.md](references/routing-policy.md); record the selected
   runtime, model or agent, capability tier, risk tier, controls, evidence
-  source, applied `floor_delta`, and fallback reason. Do not restate or override
+  source, the applied floor deltas, and fallback reason. Do not restate or override
   its task defaults, tier floors, ranking, or fallback rules elsewhere.
 - A missing, unauthenticated, unverified, or under-controlled candidate cannot
   satisfy a route. Re-profile fallbacks and rebuild their commands; never

@@ -97,9 +97,10 @@ demands it. Never lower a floor solely to meet a budget.
 A semantic signal may only **raise** a floor. This is the directional constraint
 that keeps a probabilistic classifier from reducing rigor:
 
-- `floor_delta` from the semantic router may raise **either** floor, and is applied
-  as `max(declared, semantic)` on each independent of the other. A negative or
-  lowering delta is discarded, not applied.
+- Either delta from the semantic router (`capabilityFloorDelta`, `riskFloorDelta`)
+  may raise its floor, and each is applied as `max(declared, semantic)`
+  independently of the other. A negative or lowering delta is discarded, not
+  applied.
 - A **capability** floor raise (`capabilityFloorDelta`) changes which candidates are
   eligible.
 - A **risk** floor raise (`riskFloorDelta`) is folded into the recorded
@@ -158,7 +159,7 @@ For each job:
 4. Remove candidates below either floor.
 5. Rank the remainder by task fit, control strength, evidence quality,
    reliability, then cost and latency. When the decision plane is enabled, its
-   `floor_delta` has already raised floors and its scored needs order candidates
+   the floor deltas have already raised floors and its scored needs order candidates
    within the surviving set. It never adds or restores a candidate.
 6. Prefer independent model-family evidence for C3 review when available.
 7. Record the selected runtime, resolved model or agent, capability tier, risk
