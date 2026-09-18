@@ -388,7 +388,18 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
    token block (0,1,1), which is why both classes are named here. */
 .flow-panels { display: grid; gap: 34px; }
 .flow-figure { margin: 0; }
-.flow-figure figcaption { margin-top: 10px; color: var(--ink-faint); font-size: 13.5px; line-height: 1.5; }
+/* Colour, family, case and the rule beneath come from the page's own figcaption
+   rule; only the size differs, because these captions are sentences, not labels. */
+.flow-figure figcaption { margin-top: 10px; font-size: 13.5px; line-height: 1.5; }
+/* The emitter runs its flow pass three times and stops, which leaves the panels
+   static after about five seconds. Loop it so they keep moving. The gate is not
+   decoration: the emitter's own reduced-motion guard is `animation: none
+   !important`, and an unguarded loop declared after it would out-specify it. */
+@media (prefers-reduced-motion: no-preference) {
+  .ak-diagram-svg.flow[data-motion="play"][data-animation="trace"] [data-animate="edge"] .ak-edge-flow {
+    animation-iteration-count: infinite;
+  }
+}
 .flow { width: 100%; height: auto; display: block; }
 .ak-diagram-svg.flow {
   --ak-bg: transparent;
