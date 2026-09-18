@@ -3,7 +3,7 @@ name: Publish site
 # Publishes the static landing page in site/ to GitHub Pages.
 # This workflow gates nothing: the repository ships no code and no test suite,
 # and every documentation change is still verified by the manual sweep in
-# README.md under "Maintaining the docs".
+# docs/maintaining-the-docs.md.
 
 on:
   push:
