@@ -1,7 +1,7 @@
 {
   "name": "orchestrate",
   "description": "Coordinate staged or parallel jobs across live-verified coding-agent runtimes, coding-agent sessions, and in-session subagents through one runtime-adapter contract and a normalized event protocol, routed by deterministic capability- and risk-based policy with an optional provider-neutral System-1 decision plane for trace watching, failure triage, and pre-arbiter gating. Worktree isolation, resumable state, capture, safety gates, and independent arbiter review included.",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "author": {
     "name": "bestagentkits"
   },

@@ -79,8 +79,78 @@ The plane is provider-neutral and optional.
   policy alone decides.
 
 The plane is dispatched through a runtime adapter, exactly like a job — there is
-no bespoke provider client, and no new credential category. That is what keeps
-the "no provider adapter" and "not a CLI dependency" promises intact.
+no bespoke provider client, and **no new credential system**. That is what keeps
+the "no provider adapter" and "not a CLI dependency" promises intact. What this
+section adds is not a credential system but the one thing the contract left
+unstated: *where the runtime's own provider credential is read from, and how it is
+delivered*.
+
+### Credential resolution
+
+This applies to the reference provider's key. Any additional provider this skill
+ever contacts follows the same order with its own variable name. The variable name
+is `TYPESAFE_API_KEY`.
+
+Resolution stops at the first location that yields a non-empty value:
+
+1. the process environment (`process.env`);
+2. the project `.env` — a read path inside a working tree, and a working tree is
+   **not trusted merely because the run is in it**;
+3. the `skills/` directory `.env` — likewise a working-tree path, not trusted on
+   that account;
+4. the skill's own `.env`, meaning the directory containing `SKILL.md` — likewise a
+   working-tree path, not trusted on that account.
+
+A credential read from a working-tree file is reported as such, and the egress
+authorization recorded for the call must **name the credential source**, so the
+run's authorization covers the identity that actually calls the provider and not
+merely the destination.
+
+**Delivery.** The value is handed to the runtime **only** through the inherited child environment.
+It is never passed as a command-line argument, never written to
+stdin, never placed in a prompt, and never exported by a scaffold that echoes the
+environment — because [safety-policy.md](safety-policy.md) forbids writing a dotenv
+value into a command or any surface carrying argv or environment values, and the
+invocation surface is persisted for diagnosis.
+
+**Never printed.** Not in session output, a log, a report, a trace record, a capture
+bundle, a decision trace, an issue, a PR, a plan, a plugin manifest or a commit.
+Only presence or absence, the source location and the source's trust class are
+recorded.
+
+**Recorded as.** `credentialSource` is one of `env`, `project-env`, `skills-env`,
+`skill-env` or `absent`; `credentialTrust` is `process` or `working-tree`. No value,
+length, prefix, suffix or hash of the key is ever recorded.
+
+**Only the key.** Only the key variable is read from these four locations. Provider
+endpoint, base-URL, proxy and organization overrides are read from the process
+environment or not at all: a working-tree dotenv may not redirect where the run
+connects, because that would send the user's content to an endpoint the user never
+approved, under an authorization that names a different one.
+
+**Precedence and shadowing.** An earlier location always wins, so the environment
+overrides a file and a project `.env` overrides a skill-directory one. A later
+location is never merged over an earlier one. A shadowed location is **recorded and
+reported**: the run's report carries a `credential-shadowed` token naming which
+source won and which was ignored, because a silently preferred working-tree
+credential is the failure mode where a user's own key stops being used without
+anyone noticing. The report never prints anything about the value — only which
+location was used and which was shadowed.
+
+**Degradation.** A missing key never fails the run. The plane is disabled for that
+run, deterministic policy proceeds, and the trace records `credentialSource:
+absent`.
+
+**Never prompted for.** The skill never prompts for a key and never instructs a user
+to paste one. If no source yields a value, the plane is disabled — prompting is not
+a fallback, because a secret typed into a session is a secret in a transcript.
+
+This subsection is the **single owner** of the resolution order. The README's
+credential section is a **parity-checked summary**, not an independent contract: a
+change to the order here obliges the README copy to change with it. The fourth path
+is expressed relative to `SKILL.md` rather than as a fixed absolute path because
+skill directories differ per harness — see
+[harness-portability.md](harness-portability.md).
 
 ## Preconditions
 
@@ -366,6 +436,10 @@ classifier output is stored**.
 
 ```json
 {
+  "runId": "<run-id>",
+  "jobId": "<job-id>",
+  "attempt": 1,
+  "spanId": "<span-id>",
   "decision": "watchdog|triage|router|micro_arbiter|profiler|graph_relation",
   "candidate": "<classifier-candidate-id>|none",
   "reason": "disabled|timeout|malformed|low_confidence|ok",
@@ -378,10 +452,14 @@ classifier output is stored**.
 }
 ```
 
+The four identity fields are a **new** addition: this trace previously carried no
+identifier of any kind, so it could not be joined to anything. The fields listed here
+stay owned here. The envelope, the correlation rule, retention and export are owned by
+[trace-and-logging.md](trace-and-logging.md).
+
 - Every field is a closed enum, a number, or a reference. Reasons and action
   labels are enumerated, so no runtime-authored or model-authored prose is
-  persisted.
-- `riskTier` is written by the **coordinator**, never by the classifier: the call
+  persisted.- `riskTier` is written by the **coordinator**, never by the classifier: the call
   shape carries no tool grants and no write flags, so the record is `R0` by
   construction. A trace whose tier the plane could set for itself would be
   self-authorization, which the egress rule above forbids.

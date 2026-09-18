@@ -14,6 +14,28 @@ authority:
 - A class that conflicts with the entry's required action is discarded, and the
   divergence is recorded in the decision trace.
 
+## Three failure classes
+
+Every failure a run can observe belongs to exactly one of three classes, and the
+class determines the response. They are never conflated.
+
+- **Transport or infrastructure.** The runtime, the transport or the process failed,
+  not the work. This is a **promotion candidate**: the same-runtime retry policy runs
+  first, bounded by `retry.max_attempts`, and only then does a promotion occur, bounded
+  by `fallback.maxPromotions`. Owned by [fallback-policy.md](fallback-policy.md).
+- **Content or verification.** The work product failed a check, the arbiter verdict
+  was failed or ambiguous, or the evidence contradicts itself. This is a **hard stop**
+  that escalates to the arbiter per [verification.md](verification.md).
+- An **evidence-plane write failure** — a trace, cache or metrics write that failed —
+  **neither promotes nor escalates**: it is recorded, the run continues, and the
+  affected evidence is marked incomplete. Promoting on a trace-write failure would
+  burn a promotion slot on a healthy runtime.
+
+Retrying a **content** failure on another runtime is forbidden, because it selects for
+the answer rather than for the work.
+
+The permission, sandbox and authorization hard stop above is **unchanged** and is not a promotion trigger: promoting past it would launder a control decision into a runtime the user did not approve for it. See [fallback-policy.md](fallback-policy.md).
+
 - **Missing or unauthenticated runtime:** evaluate declared fallbacks through
   the same live policy; otherwise block.
 - **Missing internal agent:** re-resolve against the live agent list; use a CLI

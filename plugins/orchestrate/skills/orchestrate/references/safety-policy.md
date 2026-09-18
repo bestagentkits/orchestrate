@@ -118,7 +118,10 @@ Destructive or external work still requires explicit approval and the R3 gate.
 - Failed output is preserved for diagnosis, never hidden or relabeled.
 - Keep destructive and credentialed external actions off prompt-only isolation.
 - Onboarding installs are visible and reversible; profile overwrites are
-  snapshotted first; credentials are entered only by the user.
+  snapshotted first. The coordinator never types, copies or stores a credential — a
+  credential is read from a documented location, or the capability that needs it is
+  disabled. Where this rule and any older wording that a user enters credentials
+  disagree, **this rule wins**.
 
 ## Secret handling
 
@@ -129,6 +132,16 @@ Destructive or external work still requires explicit approval and the R3 gate.
 - Refuse a plan that would place secrets in a prompt or in capture.
 - A diagnosis bundle excludes private invocation files and any surface that
   carries argv or environment values.
+- **Provider credentials.** A provider credential is read from a documented location
+  by the owner in [decision-plane.md](decision-plane.md); it is never printed, never
+  requested interactively, and never written to a run artifact; and its absence
+  degrades the decision plane rather than failing the run. The four-path order lives
+  in that document and is not restated here.
+- Only the key variable is read from those locations. Provider endpoint, base-URL, proxy
+  and organization overrides come from the process environment or not at all, so a
+  working-tree dotenv can never redirect where a run connects.
+- No run may add a key to a tracked file, and a dotenv file remaining in the working
+  tree stays untracked and uncommitted.
 
 ## Presentation parity
 

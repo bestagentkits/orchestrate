@@ -4,7 +4,10 @@ This file is the single authority for **live runtime evidence**: the candidate
 set, the probe sequence, the `runtimes.json` record schema, support states, the
 timeout contract, drift handling, and the auto-profiler procedure.
 
-It is not a runtime roster, not a command catalog, and not a model list. Runtime
+It is not a runtime roster, not a command catalog, and not a model list. It is also
+not **outcome** evidence: measured quality, cost and latency belong to
+[benchmark-evidence.md](benchmark-evidence.md), and probe evidence alone never proves
+how good a candidate is. Runtime
 availability, model catalogs, aliases, permission controls and CLI flags are
 volatile; never treat a model name, provider catalog or previous run as current
 evidence.

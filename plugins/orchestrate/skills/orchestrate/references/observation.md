@@ -5,6 +5,11 @@ operator. Visibility means durable evidence and actionable controls, not an
 open terminal window. Observation, verification and a controlled comparison
 complete the improvement loop.
 
+Every normalized event carries the identity fields defined by
+[event-protocol.md](event-protocol.md), including the span identifiers. The event
+**kinds** and the cursor semantics remain owned by that file;
+[trace-and-logging.md](trace-and-logging.md) owns the span's correlation rule.
+
 ## Before dispatch
 
 Record the job, attempt, supervisor run or native handle, requested and observed

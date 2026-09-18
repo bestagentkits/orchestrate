@@ -2,7 +2,12 @@
 
 # Orchestrate
 
-**Multi-runtime agent orchestration for Claude Code.**
+**Multi-runtime agent orchestration for any coding-agent harness.**
+
+An Agent Skills package: it runs on any harness that implements that contract, with
+Claude Code as one supported harness among many. The
+[harness portability contract](plugins/orchestrate/skills/orchestrate/references/harness-portability.md)
+owns the conformance surface and the per-harness install and discovery paths.
 
 Coordinate staged or parallel jobs across live-verified coding-agent runtimes,
 coding-agent sessions and in-session subagents — routed by capability and risk,
@@ -91,8 +96,10 @@ failure class an error belongs to, which capability a job actually needs — but
 it never decides:
 
 - It is sourced from a runtime **already in the live inventory**; there is no new
-  provider dependency. Jev (TypeSafe) is the reference implementation and one
-  optional provider.
+  provider dependency and no new credential system. Jev (TypeSafe) is the reference
+  implementation and one optional provider. The plane reads the runtime's own
+  provider credential from a documented resolution order; configure nothing and the
+  plane is **disabled**, not silently re-routed.
 - Its `floor_delta` splits into `capabilityFloorDelta` and `riskFloorDelta`. Both
   may only **raise** a floor, and a lowering signal is discarded. A risk-floor
   raise changes the recorded tier, adds controls, and always escalates to C3 — so
@@ -103,9 +110,61 @@ it never decides:
 
 Details: [`decision-plane.md`](plugins/orchestrate/skills/orchestrate/references/decision-plane.md).
 
+### Benchmark-ranked routing
+
+Routing ranks the candidates that already survived the hard filter, using measured
+success rate, cost per task and task duration for a model at a given reasoning effort.
+That evidence is fetched from named sources and cached **between runs** at
+`.orchestrate/benchmarks.json` for a configurable period. Benchmarks **rank, never
+gate**: they cannot set eligibility, a floor, a tier, a control or an approval. The
+cache TTL defaults to seven days, and a job may not declare more than thirty.
+See [references/benchmark-evidence.md](plugins/orchestrate/skills/orchestrate/references/benchmark-evidence.md).
+
+### Promotion and fail-safe
+
+A quota limit, an outage or a crash promotes the job to the next candidate — after the
+same-runtime retry budget is exhausted, and honoring a declared `fallback_runtime` order
+first — within a bounded budget that ends in a logged `blocked` state. A **failed check
+never promotes**, and a **permission or authorization stop never promotes**. Two
+promotions by default, four at most. See
+[references/fallback-policy.md](plugins/orchestrate/skills/orchestrate/references/fallback-policy.md).
+
+### Trace and logs
+
+Every routing decision, promotion, gate outcome and verdict carries one correlation
+identity, and the trace records fetch attempts as well as decisions. It is redacted on
+write and excluded from exports unless reviewed, and a run whose trace is incomplete
+must say so rather than implying a complete audit trail. See
+[references/trace-and-logging.md](plugins/orchestrate/skills/orchestrate/references/trace-and-logging.md).
+
+### Credentials
+
+The provider key is read from the process environment, then the project `.env`, then the
+`skills/` directory `.env`, then the skill's own `.env`; the first location with a value
+wins. The value is passed **only** through the inherited child environment, and a
+shadowed source is reported. The key is never printed, never requested interactively and
+never committed — a missing key disables the decision plane instead. This section is a
+**parity-checked summary** of
+[references/decision-plane.md](plugins/orchestrate/skills/orchestrate/references/decision-plane.md),
+which owns the order.
+
 ## Install
 
-### As a Claude Code plugin
+### With the skills CLI
+
+```bash
+npx skills add bestagentkits/orchestrate
+```
+
+```bash
+npx skills add bestagentkits/orchestrate -g            # install for the current user
+npx skills add bestagentkits/orchestrate -a <harness>  # install for one named harness
+```
+
+The Claude Code marketplace install and the plain-skill copy below are both unchanged
+and still supported: the CLI is an additional path, not a replacement.
+
+### As a Claude Code plugin (one harness among many)
 
 ```bash
 /plugin marketplace add bestagentkits/orchestrate
@@ -180,16 +239,23 @@ full schema.
 
 ### Output layout
 
+This block is a summary of the [normative tree](plugins/orchestrate/skills/orchestrate/references/output-layout.md),
+which owns the layout.
+
 ```text
 plans/reports/orchestrate-<timestamp>/
   jobs.yaml            # private resolved input; do not export wholesale
   state.json           # authoritative attempts and acceptance fingerprints
   metrics.jsonl        # per-attempt observed outcomes
   runtimes.json        # current discovery and control evidence
-  report.md            # checks, arbiter verdict, integration and questions
+  decisions.jsonl      # enumerated decision traces; exclude unless reviewed
+  calibration.json     # per-classifier threshold, sample count and expiry
+  trace.jsonl          # the correlated record; redacted on write
+  report.md            # checks, arbiter verdict, integration; carries traceStatus
   worktrees/<job-id>/
   supervisor/<supervisor-run-id>/
     events.jsonl
+    graph.json
     output-<job-id>.log
   <job-id>/
     command.txt          # CLI jobs
@@ -222,6 +288,10 @@ one owns what:
 | [`safety-policy.md`](plugins/orchestrate/skills/orchestrate/references/safety-policy.md) | **Sole safety authority**: risk tiers R0–R3, minimum controls, approval and authority, isolation, secrets, and what no signal may decide |
 | [`routing-policy.md`](plugins/orchestrate/skills/orchestrate/references/routing-policy.md) | **Sole route-selection authority**: hard filter, capability tiers, task floors, floor-raising, ranking, fallbacks, reasoning controls |
 | [`decision-plane.md`](plugins/orchestrate/skills/orchestrate/references/decision-plane.md) | The System-1 contract, provider sourcing, six decision tasks, the decision trace, and its non-authority |
+| [`harness-portability.md`](plugins/orchestrate/skills/orchestrate/references/harness-portability.md) | The Agent Skills conformance surface, the forbidden harness dependencies, and every install and discovery path |
+| [`benchmark-evidence.md`](plugins/orchestrate/skills/orchestrate/references/benchmark-evidence.md) | Measured outcome evidence, its sources, the durable cross-run cache, and what it may never decide |
+| [`fallback-policy.md`](plugins/orchestrate/skills/orchestrate/references/fallback-policy.md) | The promotion chain, its triggers and budget, the per-concern control comparison, and the terminal fail-safe |
+| [`trace-and-logging.md`](plugins/orchestrate/skills/orchestrate/references/trace-and-logging.md) | Span identifiers, the correlation rule, retention and export |
 | [`verification.md`](plugins/orchestrate/skills/orchestrate/references/verification.md) | The three verification layers, the **escalation matrix**, calibration, arbiter contract, presentation parity |
 | [`graph-optimizer.md`](plugins/orchestrate/skills/orchestrate/references/graph-optimizer.md) | Graph reduction, merge algebra, refusal conditions, resume semantics |
 | [`internal-routing.md`](plugins/orchestrate/skills/orchestrate/references/internal-routing.md) | The internal adapter: in-session dispatch, capture, timeout, resume, agent resolution |
@@ -236,6 +306,58 @@ one owns what:
 | [`runtimes/`](plugins/orchestrate/skills/orchestrate/runtimes) — `omp`, `agy`, `grok`, `claude`, `codex`, `gemini`, `opencode`, `aider` | Adapter index. `omp`, `agy` and `grok` are documented probe targets; `claude`, `codex`, `gemini`, `opencode` and `aider` are fenced **unverified stubs**. None of the eight is a support claim, and none is in any inventory until a probe is recorded |
 
 ## Upgrading
+
+### From 2.1.0 to 2.2.0
+
+An **additive** release — 2.2.0 removes no file and changes no path. The `/orchestrate`
+command, its arguments and the `jobs.yaml` schema are unchanged, so an existing spec
+still validates. Four reference documents are added, `.gitignore` gains dotenv and
+cache rules, and five visible behaviours change.
+
+What you will notice:
+
+- **It installs through the skills CLI.** `npx skills add bestagentkits/orchestrate`
+  installs the payload on any harness that implements Agent Skills. The Claude Code
+  marketplace install and the plain-skill copy both still work; the skill is no longer
+  documented as Claude-Code-only.
+- **Routing is ranked by benchmark evidence.** Candidates that already passed the hard
+  filter are ordered by measured success rate, cost per task and task duration at a
+  given reasoning effort, and that evidence is cached **between runs** at
+  `.orchestrate/benchmarks.json`.
+- **Infrastructure failures promote.** A quota limit, an outage or a crash moves the
+  job to the next candidate, after the same-runtime retry budget and honouring a
+  declared `fallback_runtime` order first, within a bounded budget that ends in a
+  logged `blocked` state.
+- **Credentials resolve from four documented locations** — process environment, project
+  `.env`, the `skills/` directory `.env`, then the skill's own `.env` — and the value is
+  passed only through the inherited child environment, never as an argument or in a
+  prompt.
+- **The trace gains span identifiers**, so operations inside one attempt are
+  distinguishable and a promoted attempt is distinguishable from a retry.
+
+Two rules got stricter, and both are worth knowing before you rely on the new paths:
+
+- Benchmark evidence **cannot** change eligibility, a floor, a tier, a control or an
+  approval. It ranks candidates; it never gates them.
+- A **failed check never promotes**, and neither does a permission or authorization
+  stop. Promoting past either would be retrying until the check passes.
+
+New reference documents:
+
+- [`references/harness-portability.md`](plugins/orchestrate/skills/orchestrate/references/harness-portability.md)
+- [`references/benchmark-evidence.md`](plugins/orchestrate/skills/orchestrate/references/benchmark-evidence.md)
+- [`references/fallback-policy.md`](plugins/orchestrate/skills/orchestrate/references/fallback-policy.md)
+- [`references/trace-and-logging.md`](plugins/orchestrate/skills/orchestrate/references/trace-and-logging.md)
+
+New in 2.2.0, owner-fixed constants:
+
+- Cache TTL: `CACHE_TTL_DEFAULT_HOURS` = 168 (seven days), `CACHE_TTL_MAX_HOURS` = 720
+  (thirty days).
+- Promotion budget: `MAX_PROMOTIONS_DEFAULT` = 2, `MAX_PROMOTIONS_MAX` = 4.
+
+Also fixed in 2.2.0: a corrupted sentence in `routing-policy.md` that read "its the
+floor deltas have already raised floors". It was found while rewriting that step and
+corrected in place.
 
 ### From 1.8.x to 2.0.0 — breaking
 
@@ -322,7 +444,10 @@ If you invoke `/orchestrate`, every change below only makes the gate stricter:
   the job-level fields become aggregates, because calibration needs the
   per-attempt pairing. The job-level `floorDelta` is replaced by the per-attempt
   `capabilityFloorDelta` and `riskFloorDelta`, which are recorded separately
-  because only the risk delta changes the tier and forces a C3 call.
+  because only the risk delta changes the tier and forces a C3 call. Each attempt
+  also records the `model` it resolved and the reasoning effort it ran at
+  (`effortLevel`, `effortRaw`), so a promoted attempt's values never overwrite its
+  predecessor's.
 
 ### From 1.4.x to 1.8.0
 
@@ -355,6 +480,13 @@ Run the whole sweep before merging a change to this reference set. Every command
 below is copy-pasteable, and the controls in step 2 verify that the checks
 themselves work.
 
+Two limits are worth stating before anyone trusts a green run. The **no copied measurement**
+rule — that no benchmark value, model name, flag or leaderboard row is pasted into the
+skill — is a **review item a grep cannot enforce**, because any token check would have to
+name the token it forbids. And a grep proves a token *exists*, not that a rule *holds*: a
+passing sweep is not evidence that no benchmark value was copied, only that the checks
+below found nothing.
+
 ```bash
 # 1. DENYLIST — no link to a deleted reference, and not to the old Pi location.
 #    The alternation lives in a variable so this block cannot match itself.
@@ -372,9 +504,9 @@ grep -qE "\]\([^)]*references/pi-onboarding\.md\)" /tmp/valid.md && echo "CONTRO
 rm -f /tmp/stale.md /tmp/valid.md
 
 # 3. VERSION — exact surface counts, not merely "present".
-test "$(grep -c '2\.1\.0' plugins/orchestrate/.claude-plugin/plugin.json)" = 1 || echo "FAIL plugin.json"
-test "$(grep -c '2\.1\.0' plugins/orchestrate/skills/orchestrate/SKILL.md)" = 1 || echo "FAIL SKILL.md"
-test "$(grep -c '2\.1\.0' site/index.html)" = 3 || echo "FAIL site (byline, spec table, vi i18n byline)"
+test "$(grep -c '2\.2\.0' plugins/orchestrate/.claude-plugin/plugin.json)" = 1 || echo "FAIL plugin.json"
+test "$(grep -c '2\.2\.0' plugins/orchestrate/skills/orchestrate/SKILL.md)" = 1 || echo "FAIL SKILL.md"
+test "$(grep -c '2\.2\.0' site/index.html)" = 3 || echo "FAIL site (byline, spec table, vi i18n byline)"
 #    README.md is exempt from the stale checks: it keeps the historical
 #    1.8.x -> 2.0.0 upgrade section, and names 2.0.0/2.0.1 as the versions it came from.
 grep -rn '2\.0\.0\|2\.0\.1' plugins site .claude-plugin --include='*.json' --include='*.md' --include='*.html' && echo "FAIL stale version" || echo "version clean"
@@ -422,6 +554,84 @@ for k in $(grep -o 'data-i18n="[^"]*"' site/index.html | cut -d'"' -f2 | sort -u
   grep -qE "(^|[ ,{]) *$k:" site/index.html || echo "I18N FAIL no VI entry: $k"
 done
 grep -qE '(^|[ ,{]) *noSuchKey:' site/index.html && echo "CONTROL FAILED" || echo "control OK: absent key detected"
+
+# --- Steps added by 2.2.0 -------------------------------------------------
+S=plugins/orchestrate/skills/orchestrate/references
+
+# 9. NEW REFERENCES — each exists AND is reachable from a PEER document, not only
+#    from SKILL.md's index row. The index row alone survives a broken cross-reference.
+for b in harness-portability.md benchmark-evidence.md fallback-policy.md trace-and-logging.md; do
+  test -f "$S/$b" || echo "MISSING $b"
+  grep -rqE "\]\([^)]*/?$b\)" --include='*.md' --exclude="$b" \
+    plugins/orchestrate/skills/orchestrate README.md || echo "NO PEER LINK for $b"
+done
+#    Must print nothing.
+
+# 10. PORTABILITY — the payload may never depend on a Claude-Code-only feature, and
+#     the one document REQUIRED to name them is excluded from the sweep.
+grep -rn 'context: fork\|^hooks:\|^allowed-tools:' plugins/orchestrate/skills/orchestrate \
+  | grep -v harness-portability.md || echo "portability clean"
+for f in "$S/harness-portability.md" README.md site/index.html; do
+  grep -q 'npx skills add bestagentkits/orchestrate' "$f" || echo "CLI PATH MISSING in $f"
+done
+
+# 11. NEGATIVE SAFETY RULES — the two rules the release adds must be findable in
+#     the file that owns each.
+grep -q 'may not set eligibility' "$S/routing-policy.md" || echo "FAIL: benchmarks may gate"
+grep -q 'failed check never promotes' "$S/fallback-policy.md" || echo "FAIL: check may promote"
+grep -q 'authorization or permission failure never promotes' "$S/fallback-policy.md" || echo "FAIL: permission may promote"
+#    Must print nothing.
+
+# 12. CREDENTIALS — the four paths live in one owner, in order, and nowhere else;
+#     dotenv files stay untracked.
+grep -n 'process\.env\|project `\.env`\|`skills/` directory\|skill.s own `\.env`' "$S/decision-plane.md"
+echo -n "duplicated order (must be 1 file): "; grep -rl 'process\.env' "$S" | wc -l
+git check-ignore -q .env && echo ".env ignored" || echo "FAIL: .env not ignored"
+test "$(git ls-files | grep -c '\(^\|/\)\.env$')" = 0 || echo "FAIL: dotenv tracked"
+#    The pattern is assembled from parts so this block cannot match itself.
+keypat='echo .*TYPESAFE''_API_KEY'
+envpat='cat .*[.]env'
+grep -rn "$keypat\|$envpat" plugins README.md site AGENTS.md CLAUDE.md 2>/dev/null \
+  || echo "no key-printing guidance"
+
+# 13. TRACE — the span identifiers live in the new document AND in their owners.
+grep -q 'spanId' "$S/trace-and-logging.md" || echo "FAIL: span not owned"
+grep -q 'spanId' "$S/event-protocol.md" || echo "FAIL: envelope missing span"
+grep -q 'spanId' "$S/decision-plane.md" || echo "FAIL: decision trace missing span"
+test "$(grep -c 'attemptId' "$S/trace-and-logging.md")" = 0 || echo "FAIL: invented attempt spelling"
+grep -q 'trace.jsonl' "$S/output-layout.md" && echo "trace artifact listed"
+grep -q 'traceStatus' "$S/output-layout.md" && echo "completeness field defined"
+
+# 14. LANDING PAGE — the invariants that can actually fail. Everything is asserted
+#     against the NEW artifacts, because the blanket reduced-motion rule and the two
+#     pre-existing aria-labels would make weaker checks pass at baseline.
+test "$(grep -c '<svg' site/index.html)" -ge 1 || echo "FAIL: no inline svg"
+test "$(grep -c '@keyframes' site/index.html)" -ge 1 || echo "FAIL: no animation"
+grep -q 'aria-labelledby="flowCaption"' site/index.html || echo "FAIL: svg has no accessible name"
+test "$(grep -c 'data-i18n="flowCaption"' site/index.html)" = 1 || echo "FAIL: caption key count"
+grep -q '.flow .marker, .flow .pulse, .flow .node-label { animation: none; }' site/index.html \
+  || echo "FAIL: reduced-motion does not name the diagram"
+nums=$(grep -o '<span class="sec-num">[0-9]*</span>' site/index.html | grep -o '[0-9]*')
+test "$(printf '%s\n' "$nums" | sort -u | wc -l)" = "$(printf '%s\n' "$nums" | wc -l)" \
+  || echo "FAIL: duplicate sec-num"
+test "$(printf '%s\n' "$nums" | wc -l)" = 10 || echo "FAIL: sec-num sequence length"
+grep -nE '<img[^>]+src="https?:|<link[^>]+href="https?:|url\(https?:|srcset=|@font-face|<iframe|xlink:href="https?:' site/index.html \
+  || echo "no external requests"
+
+# 15. CONSTANTS — each owner-fixed bound is fanned out to its readers.
+for f in "$S/benchmark-evidence.md" "$S/job-spec.md" README.md; do
+  grep -q 'CACHE_TTL_MAX_HOURS' "$f" || echo "CONSTANT FAIL CACHE_TTL_MAX_HOURS in $f"
+done
+for f in "$S/fallback-policy.md" "$S/job-spec.md" README.md; do
+  grep -q 'MAX_PROMOTIONS_MAX' "$f" || echo "CONSTANT FAIL MAX_PROMOTIONS_MAX in $f"
+done
+#    Must print nothing.
+
+# 16. BRANDING — neither reader surface may brand itself for a single harness again.
+#     The pattern is assembled from parts and the comment above avoids the phrase,
+#     so this block cannot match itself.
+brand="Claude"" Code Skill"
+grep -n "$brand" README.md site/index.html && echo "FAIL: claude-only branding" || echo "branding clean"
 ```
 
 **What these assertions do not do.** They prove that a sentence exists, a link
@@ -438,7 +648,8 @@ not as proof.
 - **Not a daemon.** No scheduler, dashboard, account pool, or provider adapter. It
   coordinates runtimes that already exist on your machine. The optional decision
   plane is dispatched through a runtime already in your live inventory; it adds
-  no provider client and no credential category.
+  no provider client and no credential system, only a documented read order for the
+  runtime's own provider key. With no key configured the plane is **disabled**.
 - **Not a CLI dependency.** The coordinator owns the run directory described in
   `job-spec.md`. If the AgentKit CLI is installed, `ak orchestrate` supplies a
   deterministic engine for that same contract — it is never required.

@@ -157,14 +157,23 @@ For each job:
 3. Remove candidates that failed live availability, authentication, command or
    control verification.
 4. Remove candidates below either floor.
-5. Rank the remainder by task fit, control strength, evidence quality,
-   reliability, then cost and latency. When the decision plane is enabled, its
-   the floor deltas have already raised floors and its scored needs order candidates
-   within the surviving set. It never adds or restores a candidate.
+5. Rank the survivors using benchmark evidence per
+   [benchmark-evidence.md](benchmark-evidence.md): a candidate with a record ranks
+   ahead of a candidate without one, ordered by that document's three signals. A
+   candidate with no record ranks last and is never assumed average; within the
+   no-record group the pre-existing deterministic ordering applies — task fit,
+   control strength, evidence quality, reliability, then cost and latency — so a
+   missing record degrades the ordering and never blocks it. When the decision
+   plane is enabled, its floor deltas have already raised floors, and its scored
+   needs order candidates within the surviving set. It never adds or restores a
+   candidate.
 6. Prefer independent model-family evidence for C3 review when available.
-7. Record the selected runtime, resolved model or agent, capability tier, risk
-   tier including its derivation, both floor deltas, the controls, evidence
-   source, and fallback reason.
+7. Record the selected runtime, resolved model or agent, the chosen `effortLevel`
+   and `effortRaw`, capability tier, risk tier including its derivation, both
+   floor deltas, the controls, evidence source, and fallback reason. Also record
+   the benchmark record reference that ranked the choice; where no record was
+   available, record that the ranking was degraded (`benchmark-degraded`) and how
+   many candidates were ranked without a record.
 
 Compare resolved model families, not executable names: two different harnesses
 may invoke the same provider/model. Unknown family metadata cannot establish
@@ -188,10 +197,14 @@ disclose a blocked fallback.
 
 ## Fallbacks
 
-Evaluate `fallback_runtime` entries through the same live gate and in declared
-order. Recompute the resolved model, capability tier, controls and command for the
+Evaluate `fallback_runtime` entries through the same live gate and in declared order.
+Recompute the resolved model, capability tier, controls and command for the
 new runtime. Never carry an identifier or flags from the failed runtime to its
 fallback.
+
+The promotion chain — its triggers, its budget, its control comparison and its
+terminal fail-safe — is owned by [fallback-policy.md](fallback-policy.md), which
+preserves this section's declared order as the chain's head.
 
 A fallback is acceptable only when it meets the same capability and risk floors.
 Record every substitution in `status.json` and the coordinator report.
@@ -241,6 +254,13 @@ this document does not preselect them.
   the path for a job that needs more privilege is a scoped permission with
   explicit approval, a stronger external boundary, or `blocked` — all owned by
   [safety-policy.md](safety-policy.md).
-- Fallbacks meet the same floors as their primary route.
+- Fallbacks meet the same floors as their primary route, and the promotion chain
+  that produces them is owned by [fallback-policy.md](fallback-policy.md).
+- A fallback never weakens a control to restore availability, and a
+  verification failure escalates rather than promoting.
+- Benchmark evidence may not set eligibility, a floor, a tier, a control or an
+  approval, and a candidate the hard filter removed is never restored by a good
+  score. It ranks the survivors and nothing more. Where ranking was degraded, the
+  report says so with `benchmark-degraded`.
 - The arbiter is C3, and its independence is either proven from live model-family
   evidence or the verdict is labeled `not-independent`.
