@@ -381,25 +381,46 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
 .colophon { font-family: var(--sans); font-size: 12px; color: var(--ink-faint); letter-spacing: .04em; }
 
 /* ---------- Animated pipeline diagram ----------------------------------- */
+/* The flow figure holds two ak:diagram panels. The diagrams ship their own
+   stylesheet, so they are re-clothed here by remapping the compiler's tokens
+   onto this page's palette — the geometry stays the compiler's output.
+   The selector must out-specify the emitter's own `svg.ak-diagram-svg{...}`
+   token block (0,1,1), which is why both classes are named here. */
+.flow-panels { display: grid; gap: 34px; }
 .flow-figure { margin: 0; }
-.flow { width: 100%; height: auto; display: block; overflow: visible; }
-.flow .node { fill: var(--paper-2); stroke: var(--rule); stroke-width: 1; }
-.flow .node-label { fill: var(--ink-soft); font-family: var(--sans); font-size: 9px; font-weight: 600; text-anchor: middle; animation: flowLabel 7s ease-in-out infinite; }
-.flow .edge { stroke: var(--rule); fill: none; stroke-width: 1.2; }
-.flow .rail { stroke: var(--accent-2); fill: none; stroke-width: 1.2; stroke-dasharray: 4 3; }
-.flow .marker { fill: var(--accent); animation: flowTravel 7s linear infinite; }
-.flow .pulse { fill: var(--accent-2); animation: flowPulse 3.2s ease-in-out infinite; }
-.flow .terminal { fill: var(--paper-2); stroke: var(--accent); stroke-width: 1.4; }
-.flow-list { margin: 26px 0 0; padding-left: 20px; color: var(--ink-soft); font-size: 15px; }
-.flow-list li { margin-bottom: 6px; }
+.flow-figure figcaption { margin-top: 10px; color: var(--ink-faint); font-size: 13.5px; line-height: 1.5; }
+.flow { width: 100%; height: auto; display: block; }
+.ak-diagram-svg.flow {
+  --ak-bg: transparent;
+  --ak-surface: var(--paper-2);
+  --ak-surface-border: var(--rule-soft);
+  --ak-text-primary: var(--ink);
+  --ak-text-secondary: var(--ink-soft);
+  --ak-text-muted: var(--ink-faint);
+  --ak-accent: var(--accent);
+  --ak-accent-light: var(--paper-3);
+  --ak-node-bg: var(--paper-2);
+  --ak-node-border: var(--rule);
+  --ak-edge-stroke: var(--rule);
+  --ak-edge-active: var(--accent);
+  --ak-badge-bg: var(--paper-3);
+  --ak-font-sans: var(--sans);
+  --ak-font-mono: var(--mono);
+  /* Only the families the two panels actually use. A new family in the IR would
+     fall back to the compiler's own hue, so the sweep pins this set. */
+  --ak-role-process-stroke: var(--rule);        --ak-role-process-fill: var(--paper-2);
+  --ak-role-service-stroke: var(--ink-faint);   --ak-role-service-fill: var(--paper-3);
+  --ak-role-decision-stroke: var(--accent);     --ak-role-decision-fill: var(--paper-2);
+  --ak-role-start-stroke: var(--accent-2);      --ak-role-start-fill: var(--paper-3);
+  --ak-role-success-stroke: var(--accent-2);    --ak-role-success-fill: var(--paper-3);
+  --ak-role-failure-stroke: var(--ink);         --ak-role-failure-fill: var(--paper-3);
+  --ak-role-waiting-stroke: var(--ink-faint);   --ak-role-waiting-fill: var(--paper-2);
+}
 
 @keyframes flowTravel { from { transform: translateX(70px); } to { transform: translateX(970px); } }
 @keyframes flowPulse { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
 @keyframes flowLabel { 0%, 100% { opacity: .58; } 50% { opacity: 1; } }
 
-@media (prefers-reduced-motion: reduce) {
-  .flow .marker, .flow .pulse, .flow .node-label { animation: none; }
-}
 
 [hidden] { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
@@ -830,33 +851,291 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
         <p class="sec-deck" data-i18n="deckFlow">These are the routing hops of the same pipeline listed above as stages, so the count differs from seven.</p>
       </div>
 
-      <figure class="flow-figure">
-        <svg class="flow" role="img" aria-labelledby="flowCaption" viewBox="0 0 1040 320">
-          <path class="edge" d="M 70 96 L 970 96" />
-          <g><rect class="node" x="28" y="81" width="84" height="30" rx="6"/><text class="node-label" x="70" y="100">probe</text></g>
-          <g><rect class="node" x="128" y="81" width="84" height="30" rx="6"/><text class="node-label" x="170" y="100" style="animation-delay:-0.7s">fetch</text></g>
-          <g><rect class="node" x="228" y="81" width="84" height="30" rx="6"/><text class="node-label" x="270" y="100" style="animation-delay:-1.4s">filter</text></g>
-          <g><rect class="node" x="328" y="81" width="84" height="30" rx="6"/><text class="node-label" x="370" y="100" style="animation-delay:-2.1s">rank</text></g>
-          <g><rect class="node" x="428" y="81" width="84" height="30" rx="6"/><text class="node-label" x="470" y="100" style="animation-delay:-2.8s">route</text></g>
-          <g><rect class="node" x="528" y="81" width="84" height="30" rx="6"/><text class="node-label" x="570" y="100" style="animation-delay:-3.5s">gate</text></g>
-          <g><rect class="node" x="628" y="81" width="84" height="30" rx="6"/><text class="node-label" x="670" y="100" style="animation-delay:-4.2s">dispatch</text></g>
-          <g><rect class="node" x="728" y="81" width="84" height="30" rx="6"/><text class="node-label" x="770" y="100" style="animation-delay:-4.9s">observe</text></g>
-          <g><rect class="node" x="828" y="81" width="84" height="30" rx="6"/><text class="node-label" x="870" y="100" style="animation-delay:-5.6s">check</text></g>
-          <g><rect class="node" x="928" y="81" width="84" height="30" rx="6"/><text class="node-label" x="970" y="100" style="animation-delay:-6.3s">verdict</text></g>
+      <div class="flow-panels">
+        <figure class="flow-figure">
+          <svg class="ak-diagram-svg flow" viewBox="0 80 1462 574" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" role="img" data-diagram-type="workflow" data-preset="editorial" data-theme="light" data-animation="trace" data-motion="play" aria-labelledby="flowCaption"><defs><style>svg{--ak-bg:#faf8f5;--ak-surface:#f3efe6;--ak-surface-border:#e2dacb;--ak-text-primary:#1c1917;--ak-text-secondary:#57534e;--ak-text-muted:#a8a29e;--ak-accent:#991b1b;--ak-accent-light:#fecaca;--ak-node-bg:#ffffff;--ak-node-border:#d6cfc4;--ak-edge-stroke:#78716c;--ak-edge-active:#991b1b;--ak-badge-bg:#f3efe6;--ak-font-sans:system-ui, serif;--ak-font-mono:ui-monospace, monospace;font-family:var(--ak-font-sans);}
+.ak-diagram-root,svg.ak-diagram-svg{--ak-role-client-stroke:#0e7490;--ak-role-client-fill:rgba(14,116,144,0.1);--ak-role-service-stroke:#4f46e5;--ak-role-service-fill:rgba(79,70,229,0.1);--ak-role-data-stroke:#b45309;--ak-role-data-fill:rgba(180,83,9,0.1);--ak-role-queue-stroke:#7c3aed;--ak-role-queue-fill:rgba(124,58,237,0.1);--ak-role-cache-stroke:#c2410c;--ak-role-cache-fill:rgba(194,65,12,0.1);--ak-role-gateway-stroke:#0369a1;--ak-role-gateway-fill:rgba(3,105,161,0.1);--ak-role-security-stroke:#be123c;--ak-role-security-fill:rgba(190,18,60,0.1);--ak-role-external-stroke:#475569;--ak-role-external-fill:rgba(71,85,105,0.1);--ak-role-worker-stroke:#0f766e;--ak-role-worker-fill:rgba(15,118,110,0.1);--ak-role-start-stroke:#047857;--ak-role-start-fill:rgba(4,120,87,0.1);--ak-role-success-stroke:#059669;--ak-role-success-fill:rgba(5,150,105,0.1);--ak-role-failure-stroke:#b91c1c;--ak-role-failure-fill:rgba(185,28,28,0.1);--ak-role-waiting-stroke:#a16207;--ak-role-waiting-fill:rgba(161,98,7,0.1);--ak-role-decision-stroke:#a21caf;--ak-role-decision-fill:rgba(162,28,175,0.1);--ak-role-process-stroke:#1d4ed8;--ak-role-process-fill:rgba(29,78,216,0.1);--ak-role-governance-stroke:#6d28d9;--ak-role-governance-fill:rgba(109,40,217,0.1);--ak-role-transform-stroke:#4338ca;--ak-role-transform-fill:rgba(67,56,202,0.1);--ak-role-filter-stroke:#4d7c0f;--ak-role-filter-fill:rgba(77,124,15,0.1);}
+.ak-diagram-root[data-theme="dark"],svg.ak-diagram-svg[data-theme="dark"]{--ak-role-client-stroke:#22d3ee;--ak-role-client-fill:rgba(34,211,238,0.16);--ak-role-service-stroke:#818cf8;--ak-role-service-fill:rgba(129,140,248,0.16);--ak-role-data-stroke:#fbbf24;--ak-role-data-fill:rgba(251,191,36,0.16);--ak-role-queue-stroke:#a78bfa;--ak-role-queue-fill:rgba(167,139,250,0.16);--ak-role-cache-stroke:#fb923c;--ak-role-cache-fill:rgba(251,146,60,0.16);--ak-role-gateway-stroke:#38bdf8;--ak-role-gateway-fill:rgba(56,189,248,0.16);--ak-role-security-stroke:#fb7185;--ak-role-security-fill:rgba(251,113,133,0.16);--ak-role-external-stroke:#94a3b8;--ak-role-external-fill:rgba(148,163,184,0.16);--ak-role-worker-stroke:#2dd4bf;--ak-role-worker-fill:rgba(45,212,191,0.16);--ak-role-start-stroke:#34d399;--ak-role-start-fill:rgba(52,211,153,0.16);--ak-role-success-stroke:#34d399;--ak-role-success-fill:rgba(52,211,153,0.16);--ak-role-failure-stroke:#f87171;--ak-role-failure-fill:rgba(248,113,113,0.16);--ak-role-waiting-stroke:#facc15;--ak-role-waiting-fill:rgba(250,204,21,0.16);--ak-role-decision-stroke:#e879f9;--ak-role-decision-fill:rgba(232,121,249,0.16);--ak-role-process-stroke:#60a5fa;--ak-role-process-fill:rgba(96,165,250,0.16);--ak-role-governance-stroke:#c4b5fd;--ak-role-governance-fill:rgba(196,181,253,0.16);--ak-role-transform-stroke:#a5b4fc;--ak-role-transform-fill:rgba(165,180,252,0.16);--ak-role-filter-stroke:#a3e635;--ak-role-filter-fill:rgba(163,230,53,0.16);}
+.ak-node[data-family="client"]{--ak-node-stroke:var(--ak-role-client-stroke);--ak-node-fill:var(--ak-role-client-fill);}.ak-legend-item[data-family="client"] .ak-legend-swatch{fill:var(--ak-role-client-fill);stroke:var(--ak-role-client-stroke);}
+.ak-node[data-family="service"]{--ak-node-stroke:var(--ak-role-service-stroke);--ak-node-fill:var(--ak-role-service-fill);}.ak-legend-item[data-family="service"] .ak-legend-swatch{fill:var(--ak-role-service-fill);stroke:var(--ak-role-service-stroke);}
+.ak-node[data-family="data"]{--ak-node-stroke:var(--ak-role-data-stroke);--ak-node-fill:var(--ak-role-data-fill);}.ak-legend-item[data-family="data"] .ak-legend-swatch{fill:var(--ak-role-data-fill);stroke:var(--ak-role-data-stroke);}
+.ak-node[data-family="queue"]{--ak-node-stroke:var(--ak-role-queue-stroke);--ak-node-fill:var(--ak-role-queue-fill);}.ak-legend-item[data-family="queue"] .ak-legend-swatch{fill:var(--ak-role-queue-fill);stroke:var(--ak-role-queue-stroke);}
+.ak-node[data-family="cache"]{--ak-node-stroke:var(--ak-role-cache-stroke);--ak-node-fill:var(--ak-role-cache-fill);}.ak-legend-item[data-family="cache"] .ak-legend-swatch{fill:var(--ak-role-cache-fill);stroke:var(--ak-role-cache-stroke);}
+.ak-node[data-family="gateway"]{--ak-node-stroke:var(--ak-role-gateway-stroke);--ak-node-fill:var(--ak-role-gateway-fill);}.ak-legend-item[data-family="gateway"] .ak-legend-swatch{fill:var(--ak-role-gateway-fill);stroke:var(--ak-role-gateway-stroke);}
+.ak-node[data-family="security"]{--ak-node-stroke:var(--ak-role-security-stroke);--ak-node-fill:var(--ak-role-security-fill);}.ak-legend-item[data-family="security"] .ak-legend-swatch{fill:var(--ak-role-security-fill);stroke:var(--ak-role-security-stroke);}
+.ak-node[data-family="external"]{--ak-node-stroke:var(--ak-role-external-stroke);--ak-node-fill:var(--ak-role-external-fill);}.ak-legend-item[data-family="external"] .ak-legend-swatch{fill:var(--ak-role-external-fill);stroke:var(--ak-role-external-stroke);}
+.ak-node[data-family="worker"]{--ak-node-stroke:var(--ak-role-worker-stroke);--ak-node-fill:var(--ak-role-worker-fill);}.ak-legend-item[data-family="worker"] .ak-legend-swatch{fill:var(--ak-role-worker-fill);stroke:var(--ak-role-worker-stroke);}
+.ak-node[data-family="start"]{--ak-node-stroke:var(--ak-role-start-stroke);--ak-node-fill:var(--ak-role-start-fill);}.ak-legend-item[data-family="start"] .ak-legend-swatch{fill:var(--ak-role-start-fill);stroke:var(--ak-role-start-stroke);}
+.ak-node[data-family="success"]{--ak-node-stroke:var(--ak-role-success-stroke);--ak-node-fill:var(--ak-role-success-fill);}.ak-legend-item[data-family="success"] .ak-legend-swatch{fill:var(--ak-role-success-fill);stroke:var(--ak-role-success-stroke);}
+.ak-node[data-family="failure"]{--ak-node-stroke:var(--ak-role-failure-stroke);--ak-node-fill:var(--ak-role-failure-fill);}.ak-legend-item[data-family="failure"] .ak-legend-swatch{fill:var(--ak-role-failure-fill);stroke:var(--ak-role-failure-stroke);}
+.ak-node[data-family="waiting"]{--ak-node-stroke:var(--ak-role-waiting-stroke);--ak-node-fill:var(--ak-role-waiting-fill);}.ak-legend-item[data-family="waiting"] .ak-legend-swatch{fill:var(--ak-role-waiting-fill);stroke:var(--ak-role-waiting-stroke);}
+.ak-node[data-family="decision"]{--ak-node-stroke:var(--ak-role-decision-stroke);--ak-node-fill:var(--ak-role-decision-fill);}.ak-legend-item[data-family="decision"] .ak-legend-swatch{fill:var(--ak-role-decision-fill);stroke:var(--ak-role-decision-stroke);}
+.ak-node[data-family="process"]{--ak-node-stroke:var(--ak-role-process-stroke);--ak-node-fill:var(--ak-role-process-fill);}.ak-legend-item[data-family="process"] .ak-legend-swatch{fill:var(--ak-role-process-fill);stroke:var(--ak-role-process-stroke);}
+.ak-node[data-family="governance"]{--ak-node-stroke:var(--ak-role-governance-stroke);--ak-node-fill:var(--ak-role-governance-fill);}.ak-legend-item[data-family="governance"] .ak-legend-swatch{fill:var(--ak-role-governance-fill);stroke:var(--ak-role-governance-stroke);}
+.ak-node[data-family="transform"]{--ak-node-stroke:var(--ak-role-transform-stroke);--ak-node-fill:var(--ak-role-transform-fill);}.ak-legend-item[data-family="transform"] .ak-legend-swatch{fill:var(--ak-role-transform-fill);stroke:var(--ak-role-transform-stroke);}
+.ak-node[data-family="filter"]{--ak-node-stroke:var(--ak-role-filter-stroke);--ak-node-fill:var(--ak-role-filter-fill);}.ak-legend-item[data-family="filter"] .ak-legend-swatch{fill:var(--ak-role-filter-fill);stroke:var(--ak-role-filter-stroke);}
+/* ak:diagram core SVG styles: shared by the reader fragment and standalone SVG.
+   Colour comes from --ak-* palette variables and --ak-role-* family tokens. */
 
-          <path class="rail" d="M 370 111 L 370 200 L 570 200 L 570 111" />
-          <g><rect class="node" x="404" y="186" width="132" height="28" rx="6"/><circle class="pulse" cx="422" cy="200" r="4"/><text class="node-label" x="482" y="204">decision plane</text></g>
+.ak-diagram-svg { font-family: var(--ak-font-sans); display: block; }
+.ak-diagram-svg text { user-select: none; }
 
-          <path class="rail" d="M 670 111 L 670 152 L 470 152 L 470 111" />
-          <text class="node-label" x="570" y="147">promote</text>
+.ak-canvas { fill: var(--ak-bg); }
+.ak-grid-dot { fill: var(--ak-text-muted); opacity: 0.28; }
 
-          <path class="edge" d="M 670 152 L 940 152 L 940 186" />
-          <g><rect class="terminal" x="878" y="186" width="124" height="28" rx="6"/><text class="node-label" x="940" y="204">fail-safe</text></g>
+.ak-title { font-size: 16px; font-weight: 700; fill: var(--ak-text-primary); letter-spacing: -0.01em; }
+.ak-subtitle { font-size: 11px; font-weight: 500; fill: var(--ak-text-secondary); }
 
-          <circle class="marker" cx="0" cy="96" r="4.5" />
-        </svg>
-        <figcaption id="flowCaption" data-i18n="flowCaption">The pipeline: probe, fetch, filter, rank, route, gate, dispatch, observe, check, verdict — with a decision-plane rail feeding rank and gate, a promotion loop, and a fail-safe terminal.</figcaption>
-      </figure>
+/* Frames: boundaries, lanes, stages */
+.ak-frame { fill: var(--ak-surface); stroke: var(--ak-surface-border); stroke-width: 1; }
+.ak-frame-boundary { fill: transparent; stroke-dasharray: 6 4; stroke-width: 1.5; }
+.ak-frame-stage { stroke-dasharray: 4 3; }
+.ak-frame-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; fill: var(--ak-text-secondary); }
+.ak-frame-role { font-size: 10px; fill: var(--ak-text-muted); }
+
+/* Nodes */
+.ak-node { cursor: pointer; }
+.ak-node-mask { fill: var(--ak-node-bg); }
+.ak-node-card { fill: var(--ak-node-fill, var(--ak-node-bg)); stroke: var(--ak-node-stroke, var(--ak-node-border)); stroke-width: 1.5; transition: stroke-width 160ms ease; }
+.ak-node[data-shape="notch"] .ak-node-card { stroke-width: 2; }
+.ak-node-accent { fill: var(--ak-node-stroke, var(--ak-accent)); }
+.ak-sigil path { fill: none; stroke: var(--ak-node-stroke, var(--ak-accent)); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.ak-node-label { font-size: 13px; font-weight: 600; fill: var(--ak-text-primary); }
+.ak-node-sub { font-size: 9.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; fill: var(--ak-text-muted); }
+.ak-node:hover .ak-node-card, .ak-node:focus-visible .ak-node-card { stroke-width: 2.5; }
+.ak-node:focus-visible { outline: none; }
+
+/* Edges */
+.ak-edge-path { fill: none; stroke: var(--ak-edge-stroke); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; transition: stroke 160ms ease, stroke-width 160ms ease; }
+.ak-edge-dashed { stroke-dasharray: 5 4; }
+.ak-edge[data-tone="failure"] .ak-edge-path { stroke: var(--ak-role-failure-stroke); }
+.ak-edge[data-tone="decision"] .ak-edge-path { stroke: var(--ak-role-decision-stroke); }
+.ak-edge-flow { fill: none; stroke: var(--ak-edge-active); stroke-width: 2.25; stroke-linecap: round; opacity: 0; pointer-events: none; }
+.ak-edge-label-mask { fill: var(--ak-bg); stroke: var(--ak-surface-border); stroke-width: 1; }
+.ak-edge-label text { font-size: 10.5px; font-weight: 500; fill: var(--ak-text-secondary); }
+.ak-arrowhead { fill: var(--ak-edge-stroke); }
+.ak-arrowhead-open { fill: none; stroke: var(--ak-edge-stroke); stroke-width: 1.25; }
+
+/* Sequence extras */
+.ak-lifeline { stroke: var(--ak-edge-stroke); stroke-width: 1.25; stroke-dasharray: 4 4; opacity: 0.55; }
+.ak-activation { fill: var(--ak-accent-light); stroke: var(--ak-accent); stroke-width: 1; }
+
+/* Legend */
+.ak-legend-swatch { stroke-width: 1.5; }
+.ak-legend-item text { font-size: 10.5px; font-weight: 500; fill: var(--ak-text-secondary); }
+
+/* Motion: staggered entrance, edge draw, optional finite trace pass.
+   Total budget stays under 8 s because --step is capped at 40 by the compiler. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-motion="play"] [data-animate="node"] {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ak-node-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: calc(var(--step, 0) * 110ms);
+  }
+  [data-motion="play"] [data-animate="edge"] .ak-edge-path {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: ak-edge-draw 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation-delay: calc(var(--step, 0) * 110ms + 140ms);
+  }
+  [data-motion="play"] [data-animate="edge"] .ak-edge-dashed {
+    animation-name: ak-edge-draw-dashed;
+  }
+  [data-motion="play"] [data-animate="edge"] .ak-edge-label {
+    opacity: 0;
+    animation: ak-fade-in 0.4s ease forwards;
+    animation-delay: calc(var(--step, 0) * 110ms + 520ms);
+  }
+  [data-motion="play"] [data-animate="frame"] {
+    opacity: 0;
+    animation: ak-fade-in 0.5s ease forwards;
+  }
+  [data-motion="play"][data-animation="trace"] [data-animate="edge"] .ak-edge-flow,
+  [data-motion="play"] [data-animation="trace"] [data-animate="edge"] .ak-edge-flow {
+    stroke-dasharray: 5 9;
+    animation: ak-edge-flow 1.3s linear 3;
+    animation-delay: calc(var(--step, 0) * 110ms + 900ms);
+  }
+  [data-motion="play"][data-animation="trace"] [data-animate="node"] .ak-node-card,
+  [data-motion="play"] [data-animation="trace"] [data-animate="node"] .ak-node-card {
+    animation: ak-node-pulse 1.6s ease-in-out 1;
+    animation-delay: calc(var(--step, 0) * 110ms + 900ms);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ak-diagram-svg *, .ak-diagram-svg { animation: none !important; transition: none !important; }
+}
+
+@keyframes ak-node-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes ak-edge-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes ak-edge-draw-dashed {
+  to { stroke-dashoffset: 0; stroke-dasharray: 5 4; }
+}
+@keyframes ak-fade-in {
+  to { opacity: 1; }
+}
+@keyframes ak-edge-flow {
+  0% { stroke-dashoffset: 28; opacity: 0; }
+  15% { opacity: 0.9; }
+  85% { opacity: 0.9; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes ak-node-pulse {
+  0%, 100% { stroke-width: 1.5; }
+  50% { stroke-width: 3; }
+}
+</style><marker id="ak-arrowhead-48a6dcf0" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path class="ak-arrowhead" d="M0 0L9 3.5L0 7z"/></marker><marker id="ak-arrowhead-open-48a6dcf0" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path class="ak-arrowhead-open" d="M0 0L8 3.5L0 7"/></marker><pattern id="ak-grid-48a6dcf0" width="24" height="24" patternUnits="userSpaceOnUse"><circle class="ak-grid-dot" cx="1" cy="1" r="1"/></pattern></defs><rect class="ak-canvas" x="0" y="0" width="1462" height="654"/><rect class="ak-canvas-grid" x="0" y="0" width="1462" height="654" fill="url(#ak-grid-48a6dcf0)"/><g class="ak-lane" data-lane-id="l_req" data-animate="frame"><rect class="ak-frame ak-frame-lane" x="18" y="92" width="1404" height="110" rx="12"/><text class="ak-frame-label" x="32" y="113">Request</text><text class="ak-frame-role" x="103.3" y="113">user</text></g><g class="ak-lane" data-lane-id="l_plane" data-animate="frame"><rect class="ak-frame ak-frame-lane" x="18" y="212" width="1404" height="110" rx="12"/><text class="ak-frame-label" x="32" y="233">Decision plane</text><text class="ak-frame-role" x="148.6" y="233">approver</text></g><g class="ak-lane" data-lane-id="l_route" data-animate="frame"><rect class="ak-frame ak-frame-lane" x="18" y="332" width="1404" height="110" rx="12"/><text class="ak-frame-label" x="32" y="353">Routing</text><text class="ak-frame-role" x="99.3" y="353">orchestrator</text></g><g class="ak-lane" data-lane-id="l_term" data-animate="frame"><rect class="ak-frame ak-frame-lane" x="18" y="452" width="1404" height="110" rx="12"/><text class="ak-frame-label" x="32" y="473">Terminal</text><text class="ak-frame-role" x="109.7" y="473">system</text></g><g class="ak-edge" data-from="request" data-to="probe" data-edge-id="e0" data-kind="forward" data-animate="edge" data-route="190,153 236,153 236,393 282,393" style="--step:1"><path class="ak-edge-path" d="M190 153 L226 153 Q236 153 236 163 L236 383 Q236 393 246 393 L282 393" pathLength="100" marker-end="url(#ak-arrowhead-48a6dcf0)"/><path class="ak-edge-flow" d="M190 153 L226 153 Q236 153 236 163 L236 383 Q236 393 246 393 L282 393" pathLength="100"/></g><g class="ak-edge" data-from="probe" data-to="fetch" data-edge-id="e1" data-kind="forward" data-animate="edge" data-route="432,393 524,393" style="--step:2"><path class="ak-edge-path" d="M432 393 L524 393" pathLength="100" marker-end="url(#ak-arrowhead-48a6dcf0)"/><path class="ak-edge-flow" d="M432 393 L524 393" pathLength="100"/></g><g class="ak-edge" data-from="fetch" data-to="filter" data-edge-id="e2" data-kind="forward" data-animate="edge" data-route="674,393 766,393" style="--step:3"><path class="ak-edge-path" d="M674 393 L766 393" pathLength="100" marker-end="url(#ak-arrowhead-48a6dcf0)"/><path class="ak-edge-flow" d="M674 393 L766 393" pathLength="100"/></g><g class="ak-edge" data-from="filter" data-to="rank" data-edge-id="e3" data-kind="forward" data-animate="edge" data-route="916,386 962,386 962,400 1008,400" style="--step:4"><path class="ak-edge-path" d="M916 386 L955 386 Q962 386 962 393 L962 393 Q962 400 969 400 L1008 400" pathLength="100" marker-end="url(#ak-arrowhead-48a6dcf0)"/><path class="ak-edge-flow" d="M916 386 L955 386 Q962 386 962 393 L962 393 Q962 400 969 400 L1008 400" pathLength="100"/></g><g class="ak-edge" data-from="filter" data-to="blocked" data-edge-id="e4" data-kind="forward" data-animate="edge" data-route="916,400 974,400 974,513 1008,513" style="--step:4"><path class="ak-edge-path" d="M916 400 L964 400 Q974 400 974 410 L974 503 Q974 513 984 513 L1008 513" pathLength="100" marker-end="url(#ak-arrowhead-48a6dcf0)"/><path class="ak-edge-flow" d="M916 400 L964 400 Q974 400 974 410 L974 503 Q974 513 984 513 L1008 513" pathLength="100"/></g><g class="ak-edge" data-from="plane" data-to="rank" data-edge-id="e5" data-kind="forward" data-animate="edge" data-route="190,273 950,273 950,386 1008,386" style="--step:1"><path class="ak-edge-path" d="M190 273 L940 273 Q950 273 950 283 L950 376 Q950 386 960 386 L1008 386" pathLength="100" marker-end="url(#ak-arrowhead-48a6dcf0)"/><path class="ak-edge-flow" d="M190 273 L940 273 Q950 273 950 283 L950 376 Q950 386 960 386 L1008 386" pathLength="100"/></g><g class="ak-edge" data-from="rank" data-to="route" data-edge-id="e6" data-kind="forward" data-animate="edge" data-route="1158,393 1250,393" style="--step:5"><path class="ak-edge-path" d="M1158 393 L1250 393" pathLength="100" marker-end="url(#ak-arrowhead-48a6dcf0)"/><path class="ak-edge-flow" d="M1158 393 L1250 393" pathLength="100"/></g><g class="ak-node" data-node-id="request" data-label="Request" data-role="start" data-desc="" data-family="start" data-shape="pill" tabindex="0" data-animate="node" style="--step:0"><rect class="ak-node-mask" x="40" y="132" width="150" height="42" rx="21"/><rect class="ak-node-card" x="40" y="132" width="150" height="42" rx="21"/><g class="ak-sigil" transform="translate(54 145)"><path d="M5 3l8 5-8 5z"/></g><text class="ak-node-label" x="80" y="157.5">Request</text></g><g class="ak-node" data-node-id="plane" data-label="Scored needs" data-role="subprocess" data-desc="" data-family="service" data-shape="card" tabindex="0" data-animate="node" style="--step:0"><rect class="ak-node-mask" x="40" y="246" width="150" height="54" rx="10"/><rect class="ak-node-card" x="40" y="246" width="150" height="54" rx="10"/><rect class="ak-node-accent" x="41" y="256" width="3" height="34" rx="1.5"/><g class="ak-sigil" transform="translate(54 265)"><path d="M3 3h10v10H3zM6 6h4M6 8h4M6 10h2"/></g><text class="ak-node-label" x="80" y="271">Scored needs</text><text class="ak-node-sub" x="80" y="286">Service</text></g><g class="ak-node" data-node-id="probe" data-label="Probe" data-role="action" data-desc="" data-family="process" data-shape="card" tabindex="0" data-animate="node" style="--step:1"><rect class="ak-node-mask" x="282" y="366" width="150" height="54" rx="10"/><rect class="ak-node-card" x="282" y="366" width="150" height="54" rx="10"/><rect class="ak-node-accent" x="283" y="376" width="3" height="34" rx="1.5"/><g class="ak-sigil" transform="translate(296 385)"><path d="M3 4h10M3 8h10M3 12h6"/></g><text class="ak-node-label" x="322" y="391">Probe</text><text class="ak-node-sub" x="322" y="406">Process</text></g><g class="ak-node" data-node-id="fetch" data-label="Fetch" data-role="action" data-desc="" data-family="process" data-shape="card" tabindex="0" data-animate="node" style="--step:2"><rect class="ak-node-mask" x="524" y="366" width="150" height="54" rx="10"/><rect class="ak-node-card" x="524" y="366" width="150" height="54" rx="10"/><rect class="ak-node-accent" x="525" y="376" width="3" height="34" rx="1.5"/><g class="ak-sigil" transform="translate(538 385)"><path d="M3 4h10M3 8h10M3 12h6"/></g><text class="ak-node-label" x="564" y="391">Fetch</text><text class="ak-node-sub" x="564" y="406">Process</text></g><g class="ak-node" data-node-id="filter" data-label="Hard filter" data-role="decision" data-desc="" data-family="decision" data-shape="notch" tabindex="0" data-animate="node" style="--step:3"><rect class="ak-node-mask" x="766" y="366" width="150" height="54" rx="4"/><rect class="ak-node-card" x="766" y="366" width="150" height="54" rx="4"/><g class="ak-sigil" transform="translate(780 385)"><path d="M8 2l6 6-6 6-6-6z"/></g><text class="ak-node-label" x="806" y="391">Hard filter</text><text class="ak-node-sub" x="806" y="406">Decision</text></g><g class="ak-node" data-node-id="rank" data-label="Rank" data-role="action" data-desc="" data-family="process" data-shape="card" tabindex="0" data-animate="node" style="--step:4"><rect class="ak-node-mask" x="1008" y="366" width="150" height="54" rx="10"/><rect class="ak-node-card" x="1008" y="366" width="150" height="54" rx="10"/><rect class="ak-node-accent" x="1009" y="376" width="3" height="34" rx="1.5"/><g class="ak-sigil" transform="translate(1022 385)"><path d="M3 4h10M3 8h10M3 12h6"/></g><text class="ak-node-label" x="1048" y="391">Rank</text><text class="ak-node-sub" x="1048" y="406">Process</text></g><g class="ak-node" data-node-id="route" data-label="Route" data-role="action" data-desc="" data-family="process" data-shape="card" tabindex="0" data-animate="node" style="--step:5"><rect class="ak-node-mask" x="1250" y="366" width="150" height="54" rx="10"/><rect class="ak-node-card" x="1250" y="366" width="150" height="54" rx="10"/><rect class="ak-node-accent" x="1251" y="376" width="3" height="34" rx="1.5"/><g class="ak-sigil" transform="translate(1264 385)"><path d="M3 4h10M3 8h10M3 12h6"/></g><text class="ak-node-label" x="1290" y="391">Route</text><text class="ak-node-sub" x="1290" y="406">Process</text></g><g class="ak-node" data-node-id="blocked" data-label="No candidate" data-role="terminal-failure" data-desc="" data-family="failure" data-shape="pill" tabindex="0" data-animate="node" style="--step:4"><rect class="ak-node-mask" x="1008" y="492" width="150" height="42" rx="21"/><rect class="ak-node-card" x="1008" y="492" width="150" height="42" rx="21"/><g class="ak-sigil" transform="translate(1022 505)"><path d="M4 4l8 8M12 4l-8 8"/></g><text class="ak-node-label" x="1048" y="517.5">No candidate</text></g><g class="ak-legend"><g class="ak-legend-item" data-family="service"><rect class="ak-legend-swatch" x="40" y="608" width="12" height="12" rx="3"/><text x="58" y="618">Service</text></g><g class="ak-legend-item" data-family="start"><rect class="ak-legend-swatch" x="115.9" y="608" width="12" height="12" rx="3"/><text x="133.9" y="618">Start</text></g><g class="ak-legend-item" data-family="failure"><rect class="ak-legend-swatch" x="178" y="608" width="12" height="12" rx="3"/><text x="196" y="618">Failure</text></g><g class="ak-legend-item" data-family="decision"><rect class="ak-legend-swatch" x="251.3" y="608" width="12" height="12" rx="3"/><text x="269.3" y="618">Decision</text></g><g class="ak-legend-item" data-family="process"><rect class="ak-legend-swatch" x="332.9" y="608" width="12" height="12" rx="3"/><text x="350.9" y="618">Process</text></g></g></svg>
+          <figcaption id="flowCaption" data-i18n="flowCaption">Routing half: probe, fetch, filter, rank and route, steered by the decision plane, with a no-candidate exit.</figcaption>
+        </figure>
+
+        <figure class="flow-figure">
+          <svg class="ak-diagram-svg flow" viewBox="0 80 1468.9 574" width="100%" height="auto" xmlns="http://www.w3.org/2000/svg" role="img" data-diagram-type="workflow" data-preset="editorial" data-theme="light" data-animation="trace" data-motion="play" aria-labelledby="flowCaptionB"><defs><style>svg{--ak-bg:#faf8f5;--ak-surface:#f3efe6;--ak-surface-border:#e2dacb;--ak-text-primary:#1c1917;--ak-text-secondary:#57534e;--ak-text-muted:#a8a29e;--ak-accent:#991b1b;--ak-accent-light:#fecaca;--ak-node-bg:#ffffff;--ak-node-border:#d6cfc4;--ak-edge-stroke:#78716c;--ak-edge-active:#991b1b;--ak-badge-bg:#f3efe6;--ak-font-sans:system-ui, serif;--ak-font-mono:ui-monospace, monospace;font-family:var(--ak-font-sans);}
+.ak-diagram-root,svg.ak-diagram-svg{--ak-role-client-stroke:#0e7490;--ak-role-client-fill:rgba(14,116,144,0.1);--ak-role-service-stroke:#4f46e5;--ak-role-service-fill:rgba(79,70,229,0.1);--ak-role-data-stroke:#b45309;--ak-role-data-fill:rgba(180,83,9,0.1);--ak-role-queue-stroke:#7c3aed;--ak-role-queue-fill:rgba(124,58,237,0.1);--ak-role-cache-stroke:#c2410c;--ak-role-cache-fill:rgba(194,65,12,0.1);--ak-role-gateway-stroke:#0369a1;--ak-role-gateway-fill:rgba(3,105,161,0.1);--ak-role-security-stroke:#be123c;--ak-role-security-fill:rgba(190,18,60,0.1);--ak-role-external-stroke:#475569;--ak-role-external-fill:rgba(71,85,105,0.1);--ak-role-worker-stroke:#0f766e;--ak-role-worker-fill:rgba(15,118,110,0.1);--ak-role-start-stroke:#047857;--ak-role-start-fill:rgba(4,120,87,0.1);--ak-role-success-stroke:#059669;--ak-role-success-fill:rgba(5,150,105,0.1);--ak-role-failure-stroke:#b91c1c;--ak-role-failure-fill:rgba(185,28,28,0.1);--ak-role-waiting-stroke:#a16207;--ak-role-waiting-fill:rgba(161,98,7,0.1);--ak-role-decision-stroke:#a21caf;--ak-role-decision-fill:rgba(162,28,175,0.1);--ak-role-process-stroke:#1d4ed8;--ak-role-process-fill:rgba(29,78,216,0.1);--ak-role-governance-stroke:#6d28d9;--ak-role-governance-fill:rgba(109,40,217,0.1);--ak-role-transform-stroke:#4338ca;--ak-role-transform-fill:rgba(67,56,202,0.1);--ak-role-filter-stroke:#4d7c0f;--ak-role-filter-fill:rgba(77,124,15,0.1);}
+.ak-diagram-root[data-theme="dark"],svg.ak-diagram-svg[data-theme="dark"]{--ak-role-client-stroke:#22d3ee;--ak-role-client-fill:rgba(34,211,238,0.16);--ak-role-service-stroke:#818cf8;--ak-role-service-fill:rgba(129,140,248,0.16);--ak-role-data-stroke:#fbbf24;--ak-role-data-fill:rgba(251,191,36,0.16);--ak-role-queue-stroke:#a78bfa;--ak-role-queue-fill:rgba(167,139,250,0.16);--ak-role-cache-stroke:#fb923c;--ak-role-cache-fill:rgba(251,146,60,0.16);--ak-role-gateway-stroke:#38bdf8;--ak-role-gateway-fill:rgba(56,189,248,0.16);--ak-role-security-stroke:#fb7185;--ak-role-security-fill:rgba(251,113,133,0.16);--ak-role-external-stroke:#94a3b8;--ak-role-external-fill:rgba(148,163,184,0.16);--ak-role-worker-stroke:#2dd4bf;--ak-role-worker-fill:rgba(45,212,191,0.16);--ak-role-start-stroke:#34d399;--ak-role-start-fill:rgba(52,211,153,0.16);--ak-role-success-stroke:#34d399;--ak-role-success-fill:rgba(52,211,153,0.16);--ak-role-failure-stroke:#f87171;--ak-role-failure-fill:rgba(248,113,113,0.16);--ak-role-waiting-stroke:#facc15;--ak-role-waiting-fill:rgba(250,204,21,0.16);--ak-role-decision-stroke:#e879f9;--ak-role-decision-fill:rgba(232,121,249,0.16);--ak-role-process-stroke:#60a5fa;--ak-role-process-fill:rgba(96,165,250,0.16);--ak-role-governance-stroke:#c4b5fd;--ak-role-governance-fill:rgba(196,181,253,0.16);--ak-role-transform-stroke:#a5b4fc;--ak-role-transform-fill:rgba(165,180,252,0.16);--ak-role-filter-stroke:#a3e635;--ak-role-filter-fill:rgba(163,230,53,0.16);}
+.ak-node[data-family="client"]{--ak-node-stroke:var(--ak-role-client-stroke);--ak-node-fill:var(--ak-role-client-fill);}.ak-legend-item[data-family="client"] .ak-legend-swatch{fill:var(--ak-role-client-fill);stroke:var(--ak-role-client-stroke);}
+.ak-node[data-family="service"]{--ak-node-stroke:var(--ak-role-service-stroke);--ak-node-fill:var(--ak-role-service-fill);}.ak-legend-item[data-family="service"] .ak-legend-swatch{fill:var(--ak-role-service-fill);stroke:var(--ak-role-service-stroke);}
+.ak-node[data-family="data"]{--ak-node-stroke:var(--ak-role-data-stroke);--ak-node-fill:var(--ak-role-data-fill);}.ak-legend-item[data-family="data"] .ak-legend-swatch{fill:var(--ak-role-data-fill);stroke:var(--ak-role-data-stroke);}
+.ak-node[data-family="queue"]{--ak-node-stroke:var(--ak-role-queue-stroke);--ak-node-fill:var(--ak-role-queue-fill);}.ak-legend-item[data-family="queue"] .ak-legend-swatch{fill:var(--ak-role-queue-fill);stroke:var(--ak-role-queue-stroke);}
+.ak-node[data-family="cache"]{--ak-node-stroke:var(--ak-role-cache-stroke);--ak-node-fill:var(--ak-role-cache-fill);}.ak-legend-item[data-family="cache"] .ak-legend-swatch{fill:var(--ak-role-cache-fill);stroke:var(--ak-role-cache-stroke);}
+.ak-node[data-family="gateway"]{--ak-node-stroke:var(--ak-role-gateway-stroke);--ak-node-fill:var(--ak-role-gateway-fill);}.ak-legend-item[data-family="gateway"] .ak-legend-swatch{fill:var(--ak-role-gateway-fill);stroke:var(--ak-role-gateway-stroke);}
+.ak-node[data-family="security"]{--ak-node-stroke:var(--ak-role-security-stroke);--ak-node-fill:var(--ak-role-security-fill);}.ak-legend-item[data-family="security"] .ak-legend-swatch{fill:var(--ak-role-security-fill);stroke:var(--ak-role-security-stroke);}
+.ak-node[data-family="external"]{--ak-node-stroke:var(--ak-role-external-stroke);--ak-node-fill:var(--ak-role-external-fill);}.ak-legend-item[data-family="external"] .ak-legend-swatch{fill:var(--ak-role-external-fill);stroke:var(--ak-role-external-stroke);}
+.ak-node[data-family="worker"]{--ak-node-stroke:var(--ak-role-worker-stroke);--ak-node-fill:var(--ak-role-worker-fill);}.ak-legend-item[data-family="worker"] .ak-legend-swatch{fill:var(--ak-role-worker-fill);stroke:var(--ak-role-worker-stroke);}
+.ak-node[data-family="start"]{--ak-node-stroke:var(--ak-role-start-stroke);--ak-node-fill:var(--ak-role-start-fill);}.ak-legend-item[data-family="start"] .ak-legend-swatch{fill:var(--ak-role-start-fill);stroke:var(--ak-role-start-stroke);}
+.ak-node[data-family="success"]{--ak-node-stroke:var(--ak-role-success-stroke);--ak-node-fill:var(--ak-role-success-fill);}.ak-legend-item[data-family="success"] .ak-legend-swatch{fill:var(--ak-role-success-fill);stroke:var(--ak-role-success-stroke);}
+.ak-node[data-family="failure"]{--ak-node-stroke:var(--ak-role-failure-stroke);--ak-node-fill:var(--ak-role-failure-fill);}.ak-legend-item[data-family="failure"] .ak-legend-swatch{fill:var(--ak-role-failure-fill);stroke:var(--ak-role-failure-stroke);}
+.ak-node[data-family="waiting"]{--ak-node-stroke:var(--ak-role-waiting-stroke);--ak-node-fill:var(--ak-role-waiting-fill);}.ak-legend-item[data-family="waiting"] .ak-legend-swatch{fill:var(--ak-role-waiting-fill);stroke:var(--ak-role-waiting-stroke);}
+.ak-node[data-family="decision"]{--ak-node-stroke:var(--ak-role-decision-stroke);--ak-node-fill:var(--ak-role-decision-fill);}.ak-legend-item[data-family="decision"] .ak-legend-swatch{fill:var(--ak-role-decision-fill);stroke:var(--ak-role-decision-stroke);}
+.ak-node[data-family="process"]{--ak-node-stroke:var(--ak-role-process-stroke);--ak-node-fill:var(--ak-role-process-fill);}.ak-legend-item[data-family="process"] .ak-legend-swatch{fill:var(--ak-role-process-fill);stroke:var(--ak-role-process-stroke);}
+.ak-node[data-family="governance"]{--ak-node-stroke:var(--ak-role-governance-stroke);--ak-node-fill:var(--ak-role-governance-fill);}.ak-legend-item[data-family="governance"] .ak-legend-swatch{fill:var(--ak-role-governance-fill);stroke:var(--ak-role-governance-stroke);}
+.ak-node[data-family="transform"]{--ak-node-stroke:var(--ak-role-transform-stroke);--ak-node-fill:var(--ak-role-transform-fill);}.ak-legend-item[data-family="transform"] .ak-legend-swatch{fill:var(--ak-role-transform-fill);stroke:var(--ak-role-transform-stroke);}
+.ak-node[data-family="filter"]{--ak-node-stroke:var(--ak-role-filter-stroke);--ak-node-fill:var(--ak-role-filter-fill);}.ak-legend-item[data-family="filter"] .ak-legend-swatch{fill:var(--ak-role-filter-fill);stroke:var(--ak-role-filter-stroke);}
+/* ak:diagram core SVG styles: shared by the reader fragment and standalone SVG.
+   Colour comes from --ak-* palette variables and --ak-role-* family tokens. */
+
+.ak-diagram-svg { font-family: var(--ak-font-sans); display: block; }
+.ak-diagram-svg text { user-select: none; }
+
+.ak-canvas { fill: var(--ak-bg); }
+.ak-grid-dot { fill: var(--ak-text-muted); opacity: 0.28; }
+
+.ak-title { font-size: 16px; font-weight: 700; fill: var(--ak-text-primary); letter-spacing: -0.01em; }
+.ak-subtitle { font-size: 11px; font-weight: 500; fill: var(--ak-text-secondary); }
+
+/* Frames: boundaries, lanes, stages */
+.ak-frame { fill: var(--ak-surface); stroke: var(--ak-surface-border); stroke-width: 1; }
+.ak-frame-boundary { fill: transparent; stroke-dasharray: 6 4; stroke-width: 1.5; }
+.ak-frame-stage { stroke-dasharray: 4 3; }
+.ak-frame-label { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; fill: var(--ak-text-secondary); }
+.ak-frame-role { font-size: 10px; fill: var(--ak-text-muted); }
+
+/* Nodes */
+.ak-node { cursor: pointer; }
+.ak-node-mask { fill: var(--ak-node-bg); }
+.ak-node-card { fill: var(--ak-node-fill, var(--ak-node-bg)); stroke: var(--ak-node-stroke, var(--ak-node-border)); stroke-width: 1.5; transition: stroke-width 160ms ease; }
+.ak-node[data-shape="notch"] .ak-node-card { stroke-width: 2; }
+.ak-node-accent { fill: var(--ak-node-stroke, var(--ak-accent)); }
+.ak-sigil path { fill: none; stroke: var(--ak-node-stroke, var(--ak-accent)); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.ak-node-label { font-size: 13px; font-weight: 600; fill: var(--ak-text-primary); }
+.ak-node-sub { font-size: 9.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; fill: var(--ak-text-muted); }
+.ak-node:hover .ak-node-card, .ak-node:focus-visible .ak-node-card { stroke-width: 2.5; }
+.ak-node:focus-visible { outline: none; }
+
+/* Edges */
+.ak-edge-path { fill: none; stroke: var(--ak-edge-stroke); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; transition: stroke 160ms ease, stroke-width 160ms ease; }
+.ak-edge-dashed { stroke-dasharray: 5 4; }
+.ak-edge[data-tone="failure"] .ak-edge-path { stroke: var(--ak-role-failure-stroke); }
+.ak-edge[data-tone="decision"] .ak-edge-path { stroke: var(--ak-role-decision-stroke); }
+.ak-edge-flow { fill: none; stroke: var(--ak-edge-active); stroke-width: 2.25; stroke-linecap: round; opacity: 0; pointer-events: none; }
+.ak-edge-label-mask { fill: var(--ak-bg); stroke: var(--ak-surface-border); stroke-width: 1; }
+.ak-edge-label text { font-size: 10.5px; font-weight: 500; fill: var(--ak-text-secondary); }
+.ak-arrowhead { fill: var(--ak-edge-stroke); }
+.ak-arrowhead-open { fill: none; stroke: var(--ak-edge-stroke); stroke-width: 1.25; }
+
+/* Sequence extras */
+.ak-lifeline { stroke: var(--ak-edge-stroke); stroke-width: 1.25; stroke-dasharray: 4 4; opacity: 0.55; }
+.ak-activation { fill: var(--ak-accent-light); stroke: var(--ak-accent); stroke-width: 1; }
+
+/* Legend */
+.ak-legend-swatch { stroke-width: 1.5; }
+.ak-legend-item text { font-size: 10.5px; font-weight: 500; fill: var(--ak-text-secondary); }
+
+/* Motion: staggered entrance, edge draw, optional finite trace pass.
+   Total budget stays under 8 s because --step is capped at 40 by the compiler. */
+@media (prefers-reduced-motion: no-preference) {
+  [data-motion="play"] [data-animate="node"] {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: ak-node-in 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+    animation-delay: calc(var(--step, 0) * 110ms);
+  }
+  [data-motion="play"] [data-animate="edge"] .ak-edge-path {
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: ak-edge-draw 0.7s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+    animation-delay: calc(var(--step, 0) * 110ms + 140ms);
+  }
+  [data-motion="play"] [data-animate="edge"] .ak-edge-dashed {
+    animation-name: ak-edge-draw-dashed;
+  }
+  [data-motion="play"] [data-animate="edge"] .ak-edge-label {
+    opacity: 0;
+    animation: ak-fade-in 0.4s ease forwards;
+    animation-delay: calc(var(--step, 0) * 110ms + 520ms);
+  }
+  [data-motion="play"] [data-animate="frame"] {
+    opacity: 0;
+    animation: ak-fade-in 0.5s ease forwards;
+  }
+  [data-motion="play"][data-animation="trace"] [data-animate="edge"] .ak-edge-flow,
+  [data-motion="play"] [data-animation="trace"] [data-animate="edge"] .ak-edge-flow {
+    stroke-dasharray: 5 9;
+    animation: ak-edge-flow 1.3s linear 3;
+    animation-delay: calc(var(--step, 0) * 110ms + 900ms);
+  }
+  [data-motion="play"][data-animation="trace"] [data-animate="node"] .ak-node-card,
+  [data-motion="play"] [data-animation="trace"] [data-animate="node"] .ak-node-card {
+    animation: ak-node-pulse 1.6s ease-in-out 1;
+    animation-delay: calc(var(--step, 0) * 110ms + 900ms);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ak-diagram-svg *, .ak-diagram-svg { animation: none !important; transition: none !important; }
+}
+
+@keyframes ak-node-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes ak-edge-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes ak-edge-draw-dashed {
+  to { stroke-dashoffset: 0; stroke-dasharray: 5 4; }
+}
+@keyframes ak-fade-in {
+  to { opacity: 1; }
+}
+@keyframes ak-edge-flow {
+  0% { stroke-dashoffset: 28; opacity: 0; }
+  15% { opacity: 0.9; }
+  85% { opacity: 0.9; }
+  100% { stroke-dashoffset: 0; opacity: 0; }
+}
+@keyframes ak-node-pulse {
+  0%, 100% { stroke-width: 1.5; }
+  50% { stroke-width: 3; }
+}
+</style><marker id="ak-arrowhead-c81be21f" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path class="ak-arrowhead" d="M0 0L9 3.5L0 7z"/></marker><marker id="ak-arrowhead-open-c81be21f" markerWidth="9" markerHeight="7" refX="8" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path class="ak-arrowhead-open" d="M0 0L8 3.5L0 7"/></marker><pattern id="ak-grid-c81be21f" width="24" height="24" patternUnits="userSpaceOnUse"><circle class="ak-grid-dot" cx="1" cy="1" r="1"/></pattern></defs><rect class="ak-canvas" x="0" y="0" width="1468.9" height="654"/><rect class="ak-canvas-grid" x="0" y="0" width="1468.9" height="654" fill="url(#ak-grid-c81be21f)"/><g class="ak-lane" data-lane-id="l_gate" data-animate="frame"><rect class="ak-frame ak-frame-lane" x="18" y="92" width="1410.9" height="110" rx="12"/><text class="ak-frame-label" x="32" y="113">Safety gate</text><text class="ak-frame-role" x="132" y="113">approver</text></g><g class="ak-lane" data-lane-id="l_exec" data-animate="frame"><rect class="ak-frame ak-frame-lane" x="18" y="212" width="1410.9" height="110" rx="12"/><text class="ak-frame-label" x="32" y="233">Execution</text><text class="ak-frame-role" x="115.7" y="233">worker</text></g><g class="ak-lane" data-lane-id="l_review" data-animate="frame"><rect class="ak-frame ak-frame-lane" x="18" y="332" width="1410.9" height="110" rx="12"/><text class="ak-frame-label" x="32" y="353">Review</text><text class="ak-frame-role" x="93.3" y="353">approver</text></g><g class="ak-lane" data-lane-id="l_term" data-animate="frame"><rect class="ak-frame ak-frame-lane" x="18" y="452" width="1410.9" height="110" rx="12"/><text class="ak-frame-label" x="32" y="473">Terminal</text><text class="ak-frame-role" x="109.7" y="473">system</text></g><g class="ak-edge" data-from="gate" data-to="dispatch" data-edge-id="e0" data-kind="forward" data-animate="edge" data-route="190,146 236,146 236,273 282,273" style="--step:1"><path class="ak-edge-path" d="M190 146 L226 146 Q236 146 236 156 L236 263 Q236 273 246 273 L282 273" pathLength="100" marker-end="url(#ak-arrowhead-c81be21f)"/><path class="ak-edge-flow" d="M190 146 L226 146 Q236 146 236 156 L236 263 Q236 273 246 273 L282 273" pathLength="100"/></g><g class="ak-edge" data-from="gate" data-to="failsafe" data-edge-id="e1" data-kind="forward" data-animate="edge" data-route="190,160 1180,160 1180,500 1250,500" style="--step:1"><path class="ak-edge-path" d="M190 160 L1170 160 Q1180 160 1180 170 L1180 490 Q1180 500 1190 500 L1250 500" pathLength="100" marker-end="url(#ak-arrowhead-c81be21f)"/><path class="ak-edge-flow" d="M190 160 L1170 160 Q1180 160 1180 170 L1180 490 Q1180 500 1190 500 L1250 500" pathLength="100"/></g><g class="ak-edge" data-from="dispatch" data-to="observe" data-edge-id="e2" data-kind="forward" data-animate="edge" data-route="432,273 524,273" style="--step:2"><path class="ak-edge-path" d="M432 273 L524 273" pathLength="100" marker-end="url(#ak-arrowhead-c81be21f)"/><path class="ak-edge-flow" d="M432 273 L524 273" pathLength="100"/></g><g class="ak-edge" data-from="observe" data-to="check" data-edge-id="e3" data-kind="forward" data-animate="edge" data-route="674,273 766,273" style="--step:3"><path class="ak-edge-path" d="M674 273 L766 273" pathLength="100" marker-end="url(#ak-arrowhead-c81be21f)"/><path class="ak-edge-flow" d="M674 273 L766 273" pathLength="100"/></g><g class="ak-edge" data-from="check" data-to="verdict" data-edge-id="e4" data-kind="forward" data-animate="edge" data-route="916,280 968,280 968,393 1008,393" style="--step:4"><path class="ak-edge-path" d="M916 280 L958 280 Q968 280 968 290 L968 383 Q968 393 978 393 L1008 393" pathLength="100" marker-end="url(#ak-arrowhead-c81be21f)"/><path class="ak-edge-flow" d="M916 280 L958 280 Q968 280 968 290 L968 383 Q968 393 978 393 L1008 393" pathLength="100"/></g><g class="ak-edge" data-from="check" data-to="promote" data-edge-id="e5" data-kind="forward" data-animate="edge" data-route="916,266 956,266 956,273 1008,273" style="--step:4"><path class="ak-edge-path" d="M916 266 L952.5 266 Q956 266 956 269.5 L956 269.5 Q956 273 959.5 273 L1008 273" pathLength="100" marker-end="url(#ak-arrowhead-c81be21f)"/><path class="ak-edge-flow" d="M916 266 L952.5 266 Q956 266 956 269.5 L956 269.5 Q956 273 959.5 273 L1008 273" pathLength="100"/></g><g class="ak-edge" data-from="promote" data-to="reroute" data-edge-id="e6" data-kind="forward" data-animate="edge" data-route="1158,266 1192,266 1192,273 1250,273" style="--step:5"><path class="ak-edge-path" d="M1158 266 L1188.5 266 Q1192 266 1192 269.5 L1192 269.5 Q1192 273 1195.5 273 L1250 273" pathLength="100" marker-end="url(#ak-arrowhead-c81be21f)"/><path class="ak-edge-flow" d="M1158 266 L1188.5 266 Q1192 266 1192 269.5 L1192 269.5 Q1192 273 1195.5 273 L1250 273" pathLength="100"/></g><g class="ak-edge" data-from="promote" data-to="failsafe" data-edge-id="e7" data-kind="forward" data-animate="edge" data-route="1158,280 1204,280 1204,513 1250,513" style="--step:5"><path class="ak-edge-path" d="M1158 280 L1194 280 Q1204 280 1204 290 L1204 503 Q1204 513 1214 513 L1250 513" pathLength="100" marker-end="url(#ak-arrowhead-c81be21f)"/><path class="ak-edge-flow" d="M1158 280 L1194 280 Q1204 280 1204 290 L1204 503 Q1204 513 1214 513 L1250 513" pathLength="100"/></g><g class="ak-edge" data-from="verdict" data-to="report" data-edge-id="e8" data-kind="forward" data-animate="edge" data-route="1158,386 1216,386 1216,393 1250,393" style="--step:5"><path class="ak-edge-path" d="M1158 386 L1212.5 386 Q1216 386 1216 389.5 L1216 389.5 Q1216 393 1219.5 393 L1250 393" pathLength="100" marker-end="url(#ak-arrowhead-c81be21f)"/><path class="ak-edge-flow" d="M1158 386 L1212.5 386 Q1216 386 1216 389.5 L1216 389.5 Q1216 393 1219.5 393 L1250 393" pathLength="100"/></g><g class="ak-edge" data-from="verdict" data-to="failsafe" data-edge-id="e9" data-kind="forward" data-animate="edge" data-route="1158,400 1228,400 1228,526 1250,526" style="--step:5"><path class="ak-edge-path" d="M1158 400 L1218 400 Q1228 400 1228 410 L1228 516 Q1228 526 1238 526 L1250 526" pathLength="100" marker-end="url(#ak-arrowhead-c81be21f)"/><path class="ak-edge-flow" d="M1158 400 L1218 400 Q1228 400 1228 410 L1228 516 Q1228 526 1238 526 L1250 526" pathLength="100"/></g><g class="ak-node" data-node-id="gate" data-label="Gate" data-role="decision" data-desc="" data-family="decision" data-shape="notch" tabindex="0" data-animate="node" style="--step:0"><rect class="ak-node-mask" x="40" y="126" width="150" height="54" rx="4"/><rect class="ak-node-card" x="40" y="126" width="150" height="54" rx="4"/><g class="ak-sigil" transform="translate(54 145)"><path d="M8 2l6 6-6 6-6-6z"/></g><text class="ak-node-label" x="80" y="151">Gate</text><text class="ak-node-sub" x="80" y="166">Decision</text></g><g class="ak-node" data-node-id="dispatch" data-label="Dispatch" data-role="action" data-desc="" data-family="process" data-shape="card" tabindex="0" data-animate="node" style="--step:1"><rect class="ak-node-mask" x="282" y="246" width="150" height="54" rx="10"/><rect class="ak-node-card" x="282" y="246" width="150" height="54" rx="10"/><rect class="ak-node-accent" x="283" y="256" width="3" height="34" rx="1.5"/><g class="ak-sigil" transform="translate(296 265)"><path d="M3 4h10M3 8h10M3 12h6"/></g><text class="ak-node-label" x="322" y="271">Dispatch</text><text class="ak-node-sub" x="322" y="286">Process</text></g><g class="ak-node" data-node-id="observe" data-label="Observe" data-role="action" data-desc="" data-family="process" data-shape="card" tabindex="0" data-animate="node" style="--step:2"><rect class="ak-node-mask" x="524" y="246" width="150" height="54" rx="10"/><rect class="ak-node-card" x="524" y="246" width="150" height="54" rx="10"/><rect class="ak-node-accent" x="525" y="256" width="3" height="34" rx="1.5"/><g class="ak-sigil" transform="translate(538 265)"><path d="M3 4h10M3 8h10M3 12h6"/></g><text class="ak-node-label" x="564" y="271">Observe</text><text class="ak-node-sub" x="564" y="286">Process</text></g><g class="ak-node" data-node-id="check" data-label="Check" data-role="decision" data-desc="" data-family="decision" data-shape="notch" tabindex="0" data-animate="node" style="--step:3"><rect class="ak-node-mask" x="766" y="246" width="150" height="54" rx="4"/><rect class="ak-node-card" x="766" y="246" width="150" height="54" rx="4"/><g class="ak-sigil" transform="translate(780 265)"><path d="M8 2l6 6-6 6-6-6z"/></g><text class="ak-node-label" x="806" y="271">Check</text><text class="ak-node-sub" x="806" y="286">Decision</text></g><g class="ak-node" data-node-id="promote" data-label="Promote" data-role="wait" data-desc="" data-family="waiting" data-shape="card" tabindex="0" data-animate="node" style="--step:4"><rect class="ak-node-mask" x="1008" y="246" width="150" height="54" rx="10"/><rect class="ak-node-card" x="1008" y="246" width="150" height="54" rx="10"/><rect class="ak-node-accent" x="1009" y="256" width="3" height="34" rx="1.5"/><g class="ak-sigil" transform="translate(1022 265)"><path d="M8 2a6 6 0 1 0 0 12A6 6 0 0 0 8 2zM8 5v3l2 2"/></g><text class="ak-node-label" x="1048" y="271">Promote</text><text class="ak-node-sub" x="1048" y="286">Waiting</text></g><g class="ak-node" data-node-id="reroute" data-label="Re-enter routing" data-role="action" data-desc="" data-family="process" data-shape="card" tabindex="0" data-animate="node" style="--step:5"><rect class="ak-node-mask" x="1250" y="246" width="156.9" height="54" rx="10"/><rect class="ak-node-card" x="1250" y="246" width="156.9" height="54" rx="10"/><rect class="ak-node-accent" x="1251" y="256" width="3" height="34" rx="1.5"/><g class="ak-sigil" transform="translate(1264 265)"><path d="M3 4h10M3 8h10M3 12h6"/></g><text class="ak-node-label" x="1290" y="271">Re-enter routing</text><text class="ak-node-sub" x="1290" y="286">Process</text></g><g class="ak-node" data-node-id="verdict" data-label="Verdict" data-role="decision" data-desc="" data-family="decision" data-shape="notch" tabindex="0" data-animate="node" style="--step:4"><rect class="ak-node-mask" x="1008" y="366" width="150" height="54" rx="4"/><rect class="ak-node-card" x="1008" y="366" width="150" height="54" rx="4"/><g class="ak-sigil" transform="translate(1022 385)"><path d="M8 2l6 6-6 6-6-6z"/></g><text class="ak-node-label" x="1048" y="391">Verdict</text><text class="ak-node-sub" x="1048" y="406">Decision</text></g><g class="ak-node" data-node-id="report" data-label="Report" data-role="terminal-success" data-desc="" data-family="success" data-shape="pill" tabindex="0" data-animate="node" style="--step:5"><rect class="ak-node-mask" x="1250" y="372" width="156.9" height="42" rx="21"/><rect class="ak-node-card" x="1250" y="372" width="156.9" height="42" rx="21"/><g class="ak-sigil" transform="translate(1264 385)"><path d="M3 8l3 3 7-7"/></g><text class="ak-node-label" x="1290" y="397.5">Report</text></g><g class="ak-node" data-node-id="failsafe" data-label="Fail-safe" data-role="terminal-failure" data-desc="" data-family="failure" data-shape="pill" tabindex="0" data-animate="node" style="--step:5"><rect class="ak-node-mask" x="1250" y="492" width="156.9" height="42" rx="21"/><rect class="ak-node-card" x="1250" y="492" width="156.9" height="42" rx="21"/><g class="ak-sigil" transform="translate(1264 505)"><path d="M4 4l8 8M12 4l-8 8"/></g><text class="ak-node-label" x="1290" y="517.5">Fail-safe</text></g><g class="ak-legend"><g class="ak-legend-item" data-family="success"><rect class="ak-legend-swatch" x="40" y="608" width="12" height="12" rx="3"/><text x="58" y="618">Success</text></g><g class="ak-legend-item" data-family="failure"><rect class="ak-legend-swatch" x="121" y="608" width="12" height="12" rx="3"/><text x="139" y="618">Failure</text></g><g class="ak-legend-item" data-family="waiting"><rect class="ak-legend-swatch" x="194.3" y="608" width="12" height="12" rx="3"/><text x="212.3" y="618">Waiting</text></g><g class="ak-legend-item" data-family="decision"><rect class="ak-legend-swatch" x="269.8" y="608" width="12" height="12" rx="3"/><text x="287.8" y="618">Decision</text></g><g class="ak-legend-item" data-family="process"><rect class="ak-legend-swatch" x="351.4" y="608" width="12" height="12" rx="3"/><text x="369.4" y="618">Process</text></g></g></svg>
+          <figcaption id="flowCaptionB" data-i18n="flowCaptionB">Gate, execution and review: the safety gate authorises, a settled check reaches a verdict, infrastructure failure promotes, and an exhausted budget fails safe.</figcaption>
+        </figure>
+      </div>
 
       <ol class="flow-list">
         <li data-i18n="flowN1">Probe: live inventory of the runtimes on this machine.</li>
@@ -992,6 +1271,8 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
 
   /* ---------- Vietnamese copy deck -------------------------------------- */
   var VI = {
+    flowCaption: "Nửa định tuyến: probe, fetch, filter, rank và route, do decision plane dẫn hướng, kèm lối thoát khi không còn ứng viên.",
+    flowCaptionB: "Cổng an toàn, thực thi và thẩm định: cổng an toàn cấp quyền, một lượt check đã ngã ngũ đi tới verdict, lỗi hạ tầng thì promote, và ngân sách cạn thì fail-safe.",
     issue: "Số 1 · Điều phối tác tử · 2026",
     kicker: "Một gói Agent Skills · Giấy phép MIT",
     headlineEm: "cả đội tác tử.",
@@ -1088,7 +1369,6 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
     capCredB: "Khoá của provider được đọc từ bốn vị trí theo thứ tự cố định, truyền đi chỉ qua môi trường con kế thừa, và không bao giờ bị in ra hay hỏi người dùng. Thiếu khoá thì decision plane bị tắt, chứ không làm lượt chạy thất bại.",
     h2Flow: "Một job thực sự di chuyển thế nào",
     deckFlow: "Đây là các chặng định tuyến của chính pipeline mà phần trên liệt kê theo giai đoạn, nên số lượng khác bảy.",
-    flowCaption: "Pipeline: probe, fetch, filter, rank, route, gate, dispatch, observe, check, verdict — kèm nhánh decision plane nuôi rank và gate, một vòng promotion, và một nút fail-safe.",
     flowN1: "Probe: kiểm kê trực tiếp các runtime trên máy này.",
     flowN2: "Fetch: bằng chứng benchmark cho từng ứng viên còn lại và từng mức effort.",
     flowN3: "Filter: điều kiện đủ, ngưỡng sàn năng lực và ngưỡng sàn rủi ro.",
