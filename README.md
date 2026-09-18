@@ -484,6 +484,15 @@ Run the whole sweep before merging a change to this reference set. Every command
 below is copy-pasteable, and the controls in step 2 verify that the checks
 themselves work.
 
+The flow figure on the landing page is a **compiled copy**. Its sources are
+`site/flow/routing.json` and `site/flow/review.json`, typed diagram IR in the format the
+`ak:diagram` skill consumes; each is compiled with
+`node scripts/compiler/compile.mjs --input <ir> --format svg --preset editorial --theme light`
+and the result is inlined with its `aria-label` replaced by `aria-labelledby`. The
+repository carries no compiler, so the sweep asserts the panels' declared envelope against
+the IR and not their geometry: a changed IR that is not recompiled is caught, a correct
+recompilation is not re-derived.
+
 Two limits are worth stating before anyone trusts a green run. The **no copied measurement**
 rule — that no benchmark value, model name, flag or leaderboard row is pasted into the
 skill — is a **review item a grep cannot enforce**, because any token check would have to
@@ -716,6 +725,54 @@ for n, panel in enumerate(sec.split('<svg class="ak-diagram-svg flow"')[1:]):
 if bad:
     print("EDGE HIDING NOT PREFERENCE-GATED", bad); sys.exit(1)
 PY4
+#     The emitter runs its flow pass three times and stops, which leaves both panels
+#     static after about five seconds. The page loops it — and the gate is load
+#     bearing, because the emitter's own reduced-motion guard is `animation: none
+#     !important` and an unguarded loop declared after it would out-specify it.
+python3 - <<'PY5' || echo "FAIL: flow pass is not looped under the gate"
+import re, pathlib, sys
+s = pathlib.Path("site/index.html").read_text(encoding="utf-8")
+occ = s.count('animation-iteration-count: infinite')
+def gated(text, needle):
+    for m in re.finditer(r'@media[^{]*prefers-reduced-motion:\s*no-preference[^{]*\{', text):
+        j = m.end(); depth = 1
+        while depth and j < len(text):
+            if text[j] == '{': depth += 1
+            elif text[j] == '}': depth -= 1
+            j += 1
+        if needle in text[m.end():j]:
+            return True
+    return False
+#     Scanned document-wide: the loop rule lives in the page's own stylesheet in
+#     <head>, not inside the section, unlike the inlined SVG rules above.
+if occ != 1 or not gated(s, 'animation-iteration-count: infinite'):
+    print("FLOW LOOP not exactly one gated declaration:", occ); sys.exit(1)
+PY5
+#     The compiled panels are copies of a source. Their envelope is asserted against
+#     the committed IR so a drifted source is caught; the geometry is not, because
+#     regenerating it needs the diagram compiler, which this repository does not carry.
+python3 - <<'PY6' || echo "FAIL: IR does not match the shipped panels"
+import json, re, pathlib, sys
+s = pathlib.Path("site/index.html").read_text(encoding="utf-8")
+i = s.index('<section id="flow"'); sec = s[i:s.index('</section>', i)]
+panels = [p[:p.index('</svg>')] for p in sec.split('<svg class="ak-diagram-svg flow"')[1:]]
+files = ["site/flow/routing.json", "site/flow/review.json"]
+if len(panels) != len(files):
+    print("PANEL/IR COUNT", len(panels), len(files)); sys.exit(1)
+bad = []
+for panel, f in zip(panels, files):
+    ir = json.loads(pathlib.Path(f).read_text())
+    for attr, want in (("data-diagram-type", ir["diagram_type"]),
+                       ("data-preset", ir["meta"]["visual_preset"]),
+                       ("data-theme", ir["meta"]["theme"])):
+        got = re.search(attr + r'="([^"]+)"', panel)
+        if not got or got.group(1) != want:
+            bad.append((f, attr, want, got.group(1) if got else None))
+    if f'data-animation="{ir["meta"]["animation"]}"' not in panel:
+        bad.append((f, "data-animation", ir["meta"]["animation"], None))
+if bad:
+    print("IR/SVG MISMATCH", bad); sys.exit(1)
+PY6
 nums=$(grep -o '<span class="sec-num">[0-9]*</span>' site/index.html | grep -o '[0-9]*')
 test "$(printf '%s\n' "$nums" | sort -u | wc -l)" = "$(printf '%s\n' "$nums" | wc -l)" \
   || echo "FAIL: duplicate sec-num"
