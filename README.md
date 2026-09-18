@@ -143,7 +143,9 @@ The provider key is read from the process environment, then the project `.env`, 
 `skills/` directory `.env`, then the skill's own `.env`; the first location with a value
 wins. The value is passed **only** through the inherited child environment, and a
 shadowed source is reported. The key is never printed, never requested interactively and
-never committed — a missing key disables the decision plane instead. This section is a
+never committed — a missing key disables the decision plane instead. `.env.example` at the
+repository root carries the variable name and no value, so the template can be committed
+while `.env` stays ignored. This section is a
 **parity-checked summary** of
 [references/decision-plane.md](plugins/orchestrate/skills/orchestrate/references/decision-plane.md),
 which owns the order.
@@ -628,9 +630,19 @@ test "$(grep -cE '^4\. the skill.s own' "$S/decision-plane.md")" = 1 \
   || echo "FAIL: credential location 4 is not the skill's own .env"
 echo -n "duplicated order (must be 1 file): "; grep -rl 'process\.env' "$S" | wc -l
 git check-ignore -q .env && echo ".env ignored" || echo "FAIL: .env not ignored"
-#    `.env.*` too: the ignore rule covers `.env` and `.env.*`, so a tracked
-#    `.env.local` must fail this as well.
-test "$(git ls-files | grep -cE '(^|/)\.env(\..*)?$')" = 0 || echo "FAIL: dotenv tracked"
+#    Any dotenv except the template. The rule cannot simply forbid `.env.*`, because
+#    `.gitignore` exempts `.env.example` on purpose, so the pattern has to let the
+#    template through while still catching `.env.local`. `wc -l` rather than `grep -c`,
+#    so that an empty result counts 0 instead of one empty line.
+bad=$(git ls-files | grep -E '(^|/)\.env' | grep -vE '(^|/)\.env\.example$' | wc -l)
+test "$bad" = 0 || echo "FAIL: dotenv tracked"
+#    The template is the one dotenv meant to be tracked, and it must stay valueless:
+#    a real key pasted into the example is this file's characteristic failure, and it
+#    is the one place a key could be committed without touching an ignored path.
+test "$(git ls-files | grep -cE '(^|/)\.env\.example$')" = 1 \
+  || echo "FAIL: .env.example is not tracked"
+test "$(grep -vE '^[[:space:]]*(#|$)' .env.example | grep -vE '=[[:space:]]*$' | wc -l)" = 0 \
+  || echo "FAIL: .env.example carries a value"
 #    The pattern is assembled from parts so this block cannot match itself.
 keypat='echo .*TYPESAFE''_API_KEY'
 envpat='cat .*[.]env'
