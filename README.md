@@ -110,6 +110,40 @@ it never decides:
 
 Details: [`decision-plane.md`](plugins/orchestrate/skills/orchestrate/references/decision-plane.md).
 
+### Jev (TypeSafe), the reference System-1 model
+
+Jev is the model this contract was written against, and **one optional provider** behind
+it — never a requirement, and never the only way to run the plane.
+[TypeSafe](https://typesafe.ai) builds what it calls System One models: instead of
+generating text for a program to parse, they answer a declared set of typed questions
+about a piece of state and return a probability for each answer. Three properties are why
+the plane is shaped the way it is:
+
+- **Typed answers, no repair step.** A decision arrives as a value from a pre-declared
+  set, so nothing has to be coerced out of free text into a policy field, and an answer
+  outside that set is a malformed result rather than a plausible one.
+- **A distribution, not a verdict.** A choice comes back with the runner-up
+  probabilities beside it, which is what lets a low-confidence decision be expressed
+  instead of rounded into a confident wrong answer.
+- **Calibrated confidence.** Every answer carries its own probability, which is what
+  lets a floor be **raised** from a signal, and a weak signal be discarded rather than
+  acted on.
+
+That shape is what the plane's six decision tasks consume, and it is why Jev is named
+against each of them: the **trace watchdog** and **failure triage** score probabilities
+over an enumerated state and error taxonomy; the **semantic router** supplies the floor
+deltas and the ranking needs; the **micro-arbiter** proposes the flags a deterministic
+predicate consumes; **profiler classification** writes an annotation-only hint block; and
+**graph relation** proposes a relation over a closed set. In all six, the result is
+scored evidence for a deterministic predicate, never the decision itself.
+
+Configure the key, or configure nothing. Because the plane is dispatched through a runtime
+already in the live inventory, it adds no provider client and no second credential system:
+with no eligible classifier, no key, or no recorded egress authorization it is **disabled**
+for that run and deterministic policy decides. The variable is named under [Credentials](#credentials);
+the read order and the call contract are owned by
+[`decision-plane.md`](plugins/orchestrate/skills/orchestrate/references/decision-plane.md).
+
 ### Benchmark-ranked routing
 
 Routing ranks the candidates that already survived the hard filter, using measured
@@ -139,16 +173,25 @@ must say so rather than implying a complete audit trail. See
 
 ### Credentials
 
-The provider key is read from the process environment, then the project `.env`, then the
-`skills/` directory `.env`, then the skill's own `.env`; the first location with a value
-wins. The value is passed **only** through the inherited child environment, and a
-shadowed source is reported. The key is never printed, never requested interactively and
-never committed — a missing key disables the decision plane instead. `.env.example` at the
-repository root carries the variable name and no value, so the template can be committed
-while `.env` stays ignored. This section is a
-**parity-checked summary** of
+For the reference provider the variable is `TYPESAFE_API_KEY`; the key is created in
+TypeSafe's own console, and nothing in this repository generates, reveals or stores it. It
+is read from the process environment, then the project `.env`, then the `skills/`
+directory `.env`, then the skill's own `.env`; the first location with a value wins. The
+value is passed **only** through the inherited child environment, and a shadowed source is
+reported. The key is never printed, never requested interactively and never committed — a
+missing key disables the decision plane instead. `.env.example` at the repository root
+carries the variable name and no value, so the template can be committed while `.env`
+stays ignored.
+
+A key on its own is not a licence to call the provider. A decision-plane call also
+requires a recorded **egress authorization** naming the provider and the credential
+source, because sending state to a provider is an external side effect. With no key **or**
+no recorded authorization the plane is disabled for the run and deterministic policy
+proceeds; it is never silently re-routed to another provider.
+
+This section is a **parity-checked summary** of
 [references/decision-plane.md](plugins/orchestrate/skills/orchestrate/references/decision-plane.md),
-which owns the order.
+which owns the read order.
 
 ## Install
 
