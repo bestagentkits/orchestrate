@@ -27,7 +27,7 @@ defaults:
   approval: inherit
   capture: true
 calibration:
-  minimum_samples: <integer>        # run-policy floor for micro-arbiter calibration
+  minimum_samples: <integer>        # owner-fixed policy floor; a value below 30 is rejected
 jobs:
   - id: string
     runtime: string
@@ -88,7 +88,9 @@ Every job includes:
 - exactly one executable intent through `prompt` or `skill`;
 - `timeout` or `defaults.timeout`;
 - `expected_output`;
-- `model` or a routable `task`.
+- `model` or a routable `task`;
+- `calibration.minimum_samples`, at or above the owner-fixed policy floor of 30,
+  whenever the run may use the no-C3 acceptance path.
 
 When `model` is present it is an explicit constraint, not proof of availability.
 The live inventory gate still applies. Internal model selection is allowed only
@@ -122,6 +124,10 @@ Before stage construction:
 10. Run the graph optimizer pass per [graph-optimizer.md](graph-optimizer.md)
     after routing: apply only approved reductions, then re-run checks 1–9 against
     the reduced graph. A reduction that breaks any check above is refused.
+11. Require `calibration.minimum_samples` to be an integer at or above the
+    owner-fixed policy floor of 30 whenever the run may use the no-C3 path. A
+    missing or lower value does **not** lower the bar: it disables
+    acceptance-without-C3 for the run, and C3 remains mandatory.
 
 Unknown flags, models, or controls fail validation. Re-read live help or current
 official documentation; never guess a replacement.
@@ -154,41 +160,76 @@ and written atomically before the next dispatch:
       "model": "<resolved-model-or-null>",
       "agent": "<resolved-agent-or-null>",
       "attempts": 1,
-      "startedAt": "<timestamp-or-null>",
-      "endedAt": null,
       "worktree": "<path-or-null>",
       "riskTier": "R0|R1|R2|R3",
-      "tierDerivation": ["<declared-attribute>"],
-      "floorDelta": 0,
-      "decisionTraceRef": "<decisions.jsonl-sequence-or-null>",
-      "acceptedWithoutC3": false
+      "acceptedWithoutC3Count": 0,
+      "attemptRecords": [
+        {
+          "attempt": 1,
+          "status": "queued|running|success|failed|blocked|interrupted",
+          "startedAt": "<timestamp-or-null>",
+          "endedAt": null,
+          "tierDerivation": ["<declared-attribute>"],
+          "capabilityFloorDelta": 0,
+          "riskFloorDelta": 0,
+          "riskTier": "R0|R1|R2|R3",
+          "c3EscalationReason": "<reason-or-null>",
+          "c3Verdict": "pass|fail|blocked|null",
+          "acceptedWithoutC3": false,
+          "laterOutcome": "<observed-outcome-or-null>",
+          "decisionTraceRef": "<decisions.jsonl-sequence-or-null>"
+        }
+      ]
     }
   }
 }
 ```
 
-`riskTier` is a **deterministic derivation** from `tierDerivation`, recorded
-before execution per [safety-policy.md](safety-policy.md). It is never authored
-by a classifier. A missing or invalid value is treated as `R2`.
+**Acceptance is recorded per attempt, not per job.** `attemptRecords[]` is the
+authoritative record and the job-level `status`, `attempts`, `riskTier` and
+`acceptedWithoutC3Count` are aggregates derived from it — the maximum tier and
+the count of attempts accepted without a C3 call. A job-level field that
+collapses several attempts never overrides an attempt record. This is what lets
+calibration pair an accepted attempt with the C3 verdict that later contradicted
+it, per [metrics-and-self-improvement.md](metrics-and-self-improvement.md).
 
-`floorDelta` is the applied semantic adjustment. Only a non-negative value is
-recorded; a lowering signal is discarded, per
-[routing-policy.md](routing-policy.md).
+`riskTier` on an attempt is the **recorded** tier the escalation matrix reads. It
+is computed by the coordinator, never authored by a classifier, as the maximum of
+two deterministic inputs:
 
-`decisionTraceRef` points at the enumerated trace in `decisions.jsonl`
-described by [decision-plane.md](decision-plane.md) and
-[output-layout.md](output-layout.md). `acceptedWithoutC3` records whether the
-escalation matrix in [verification.md](verification.md) accepted the attempt
-without a C3 arbiter call, and the report aggregates that count.
+```text
+riskTier = max(tierDerivation, riskFloorDelta applied)
+```
+
+`tierDerivation` is the deterministic derivation from declared attributes owned by
+[safety-policy.md](safety-policy.md). `riskFloorDelta` is the risk-floor part of
+the semantic adjustment, and it may only **raise**. A negative or lowering value is
+discarded. A missing or unparseable `riskTier` is treated as `R2`.
+
+The two floor deltas are recorded separately, because they have different
+consequences: `capabilityFloorDelta` affects which candidates are eligible, while
+`riskFloorDelta` changes the tier, the required controls, and whether a C3 call is
+mandatory. A non-zero `riskFloorDelta` means a probabilistic signal raised the
+tier, and the escalation matrix in [verification.md](verification.md) always
+escalates such an attempt.
+
+`c3EscalationReason` records why the attempt was sent to C3, or `null` when it was
+accepted on the micro-arbiter path. `c3Verdict` records the outcome of that call.
+`laterOutcome` is the observed result that makes the attempt usable as calibration
+ground truth. `decisionTraceRef` points at the enumerated trace in
+`decisions.jsonl` described by [decision-plane.md](decision-plane.md) and
+[output-layout.md](output-layout.md).
 
 `calibration.minimum_samples` is the **owner-fixed** floor for micro-arbiter
-calibration: the number of comparable C3-audited outcomes a per-classifier
-record must contain before the no-C3 path may be used at all. It is a run-policy
-field, set here and nowhere else, and it is independent of any record. A
-calibration record whose own `minimum` field does not equal this value is
-invalid, which is what stops a record from validating itself. The calibration
-rules that consume it — ground truth, per-classifier scoping, expiry, and
-fail-closed behaviour — are owned by [verification.md](verification.md).
+calibration: the number of comparable C3-audited outcomes a per-classifier record
+must contain before the no-C3 path may be used at all. It is a run-policy field,
+set here and nowhere else, and it is independent of any record. Its value must be
+at least the owner-fixed policy floor of 30; a lower value is rejected by
+validation, and a missing value disables the no-C3 path. A calibration record
+whose own `minimum` field does not equal this value is invalid, which is what
+stops a record from validating itself. The calibration rules that consume it —
+ground truth, per-classifier scoping, the agreement and threshold floors, expiry,
+and fail-closed behaviour — are owned by [verification.md](verification.md).
 
 After live routing, add authorized `workspace_roots`, relative `owned_paths`,
 explicit `inputs`/`outputs` and a verified `invocation` for each CLI job. Keep

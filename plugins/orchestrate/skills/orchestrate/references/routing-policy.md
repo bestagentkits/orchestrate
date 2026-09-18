@@ -97,8 +97,17 @@ demands it. Never lower a floor solely to meet a budget.
 A semantic signal may only **raise** a floor. This is the directional constraint
 that keeps a probabilistic classifier from reducing rigor:
 
-- `floor_delta` from the semantic router is applied as `max(declared, semantic)`.
-  A negative or lowering delta is discarded, not applied.
+- `floor_delta` from the semantic router may raise **either** floor, and is applied
+  as `max(declared, semantic)` on each independent of the other. A negative or
+  lowering delta is discarded, not applied.
+- A **capability** floor raise (`capabilityFloorDelta`) changes which candidates are
+  eligible.
+- A **risk** floor raise (`riskFloorDelta`) is folded into the recorded
+  `riskTier` by the coordinator — the field the escalation matrix reads — and it
+  **forces a C3 escalation** per [verification.md](verification.md). A signal that
+  raises the risk tier can never thereby make a job eligible for the no-C3 path;
+  it can only add controls and an arbiter call. The plane still never authors a
+  tier: it supplies a signed delta and the coordinator applies the maximum.
 - `review_independence_required` can force C3 plus independent review onto a job
   the declared `task` labelled too cheaply. It can never remove that requirement.
 - A `likely_mechanical` signal can lower nothing; it may only inform ranking among
@@ -117,9 +126,13 @@ The unconditional independence rules are owned by
 2. **Fan out cheaply, decide strongly.** Use C1 for independent volume work, then
    C3 for the job that synthesizes, judges or arbitrates the outputs.
 3. **Require independent judgment.** Review, audit, security and arbiter jobs
-   require C3. Prefer a different model family or an independently configured
-   agent from the primary producer when live inventory proves that diversity;
-   otherwise disclose the same-family fallback.
+   require C3, and that review must be independent of the producer. Prefer a
+   different model family or a freshly and independently configured agent. When
+   live inventory proves no such route exists, the verdict is **not independent**:
+   label it `not-independent` in the report and the arbiter verdict, and either
+   use a fresh, independently configured context as the minimum substitute or
+   block. A recorded limitation is not a substitute for independence — see
+   [verification.md](verification.md), which owns the independence rule.
 4. **Match controls before cost.** Filter candidates by the job's risk tier before
    comparing latency, price or convenience. An auto-approved or weakly isolated
    harness does not qualify for shared-tree writes.
@@ -149,7 +162,8 @@ For each job:
    within the surviving set. It never adds or restores a candidate.
 6. Prefer independent model-family evidence for C3 review when available.
 7. Record the selected runtime, resolved model or agent, capability tier, risk
-   tier, controls, evidence source, `floor_delta`, and fallback reason.
+   tier including its derivation, both floor deltas, the controls, evidence
+   source, and fallback reason.
 
 Compare resolved model families, not executable names: two different harnesses
 may invoke the same provider/model. Unknown family metadata cannot establish
@@ -218,9 +232,14 @@ this document does not preselect them.
 
 - `runtimes.json` reflects this host and this run.
 - Every selected runtime and model or agent was found live.
-- Capability and risk floors are recorded, including any `floor_delta` applied.
+- Capability and risk floors are recorded, including the
+  `capabilityFloorDelta` and `riskFloorDelta` applied, and a non-zero
+  `riskFloorDelta` was escalated to C3.
 - No candidate relies on a copied provider catalog or stale command example.
-- Permission bypasses are off unless the user explicitly approved the exact R3
-  action and external isolation makes the residual risk acceptable.
+- Permission bypasses are disabled. A runtime's bypass option is never enabled;
+  the path for a job that needs more privilege is a scoped permission with
+  explicit approval, a stronger external boundary, or `blocked` — all owned by
+  [safety-policy.md](safety-policy.md).
 - Fallbacks meet the same floors as their primary route.
-- The arbiter is C3 and its independence or same-family limitation is stated.
+- The arbiter is C3, and its independence is either proven from live model-family
+  evidence or the verdict is labeled `not-independent`.

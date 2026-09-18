@@ -91,6 +91,10 @@ All must hold before a call is made. If any fails, the plane records
 2. `toolGating` is verified **and permits withholding every tool**.
 3. `structuredOutput` is `supported`.
 4. The safety gate has already confirmed cwd, writable roots, and controls.
+5. The run records an **egress authorization** for this candidate: an existing
+   user-authorization scope that permits sending the declared content classes to
+   that provider. Without it, the plane is disabled for the run. The plane never
+   authorizes its own egress.
 
 The tool-gating precondition is deliberately strict: the call shape below
 promises "no tools, no network beyond the provider call", and a runtime whose
@@ -102,11 +106,20 @@ would be an aspiration, so the call is skipped rather than misrepresented.
 Every decision-plane call:
 
 - happens **after** the safety gate, never before it;
-- is itself classified and recorded as **R0/observe**;
-- runs with tool grants off and no write flags;
+- runs with tool grants off and no write flags, so it is `R0` **by construction**,
+  never by self-declaration;
 - carries a recorded **egress authority** naming the provider, the content
-  classes sent (job prompt, repo-context summary, normalized error text,
-  artifact names), and the approval basis for sending them.
+  classes sent (job prompt, repo-context summary, normalized error text, artifact
+  names), and the **existing user-authorization scope** that permits that egress.
+
+Sending prompts or repository context to a third-party provider is an external
+side effect. [safety-policy.md](safety-policy.md) places external side effects at
+R3, so this file does not get to grade its own call as harmless. The plane records
+a reference to an authorization the user already granted, exactly as a job's
+`authority` field does, and a reference cannot grant authority by itself. **No
+recorded egress authorization means no plane for that run**: deterministic policy
+proceeds and the traces record `none`. A self-issued `R0` label is not a control,
+and the plane may not assign its own risk tier.
 
 Planning-stage decisions (semantic router, graph relations) therefore occur in
 the routing stage, after the safety gate, not while the graph is being drafted.
@@ -260,11 +273,12 @@ Runs once per job, in the routing stage, after the safety gate.
 effect and importance, a bounded repo-context summary, the candidate profiles,
 and historical metrics.
 
-**Out:** `floor_delta` plus scored needs.
+**Out:** `capabilityFloorDelta`, `riskFloorDelta` plus scored needs.
 
 | Signal | Type | Effect |
 | --- | --- | --- |
-| `floor_delta` | signed integer per floor | **Raises only**; a lowering value is discarded |
+| `capabilityFloorDelta` | signed integer | **Raises only**; a lowering value is discarded. Changes eligibility |
+| `riskFloorDelta` | signed integer | **Raises only**; folded into the recorded `riskTier` by the coordinator and **forces C3 escalation** |
 | `requires_deep_reasoning` | probability | ranking |
 | `requires_large_context` | probability | ranking |
 | `requires_strong_shell` | probability | ranking |
@@ -279,8 +293,10 @@ Rules:
 
 - The deterministic hard filter runs first. A candidate removed by the filter
   cannot be restored by any score.
-- `floor_delta` is applied as `max(declared, semantic)`. The router can correct
-  an understated `task` upward; it cannot lower a floor.
+- Each delta is applied as `max(declared, semantic)`. The router can correct an
+  understated `task` upward; it cannot lower a floor. A `riskFloorDelta` raise
+  adds controls and an arbiter call, so it can never widen eligibility for the
+  no-C3 path — it only shrinks it.
 - `review_independence_required` is one-way. It can add the requirement to a job,
   and it can never remove the unconditional requirement owned by
   [safety-policy.md](safety-policy.md).
@@ -357,7 +373,7 @@ classifier output is stored**.
   "egressAuthority": "<recorded-authority-id>",
   "riskTier": "R0",
   "scores": { "<signal>": 0.0 },
-  "applied": { "floor_delta": "0|+n", "action": "<policy-action>|none" },
+  "applied": { "capabilityFloorDelta": "0|+n", "riskFloorDelta": "0|+n", "action": "<policy-action>|none" },
   "outcomeRef": "<later-observed-outcome-id-or-null>"
 }
 ```
@@ -365,6 +381,10 @@ classifier output is stored**.
 - Every field is a closed enum, a number, or a reference. Reasons and action
   labels are enumerated, so no runtime-authored or model-authored prose is
   persisted.
+- `riskTier` is written by the **coordinator**, never by the classifier: the call
+  shape carries no tool grants and no write flags, so the record is `R0` by
+  construction. A trace whose tier the plane could set for itself would be
+  self-authorization, which the egress rule above forbids.
 - The trace is listed in [output-layout.md](output-layout.md) and **excluded from
   diagnostic exports unless reviewed**, matching the private-invocation rule.
 - `outcomeRef` is what makes calibration possible later.

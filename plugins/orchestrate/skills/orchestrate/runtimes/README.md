@@ -44,13 +44,25 @@ makes a capability real.
 
 ## Note structure
 
-A newly authored note uses the template below.
+Three structures exist, and mixing them is what makes an index dishonest:
+
+| Note kind | Structure | Marked by |
+| --- | --- | --- |
+| **Full note** | the template below | a recorded live probe in `runtimes.json` |
+| **Fenced unverified stub** | the stub template below | the leading banner and an as-of date |
+| **Relocated verified note** | its own headings | the index row |
 
 A **relocated verified note** keeps its own structure. The two Pi files were
 moved out of core with their verified procedures intact, and their headings are
 richer than the template; rewriting them to match a template would discard
 verified detail for cosmetic uniformity. Relocated notes are marked as such in
 the index.
+
+A **stub** uses its own shorter structure, because it has no capability to map:
+banner, what the stub is, probe focus, verification steps, graduation, and the
+independence caveat. Forcing stub content into the full-note headings would
+produce sections that assert nothing under headings that promise a capability
+map.
 
 ## Adding an adapter
 
@@ -88,15 +100,29 @@ A newly authored note uses these headings, in this order:
 | **Risk posture defaults** | Approval and isolation expectations **to verify, not to trust** |
 | **Independence caveat** | Different executable names do not prove a different model family |
 
+A stub uses this structure instead:
+
+| Heading | Contents |
+| --- | --- |
+| banner | `Status: unverified — not a support claim, not in inventory`, plus an as-of date |
+| **What this stub is** | why no evidence exists, and that writing a map from memory is the failure this skill forbids |
+| **Probe focus** | what a future probe must establish from live help |
+| **Verification steps** | the probe and conformance sequence, ending in a recorded profile |
+| **Graduation** | the condition that replaces the stub with a full note |
+| **Independence caveat** | no independence property can be claimed for an unprobed runtime |
+
 ## Index
 
-### Verified adapters
+### Documented adapters
 
-An adapter appears here only after a live probe and conformance run are recorded.
+A row here means a **written note exists**. It is not a support claim and not a
+verification: no artifact in this repository marks an adapter verified. Only a
+live probe recorded in `runtimes.json` makes an adapter selectable, and only a
+verified `available` state makes it eligible for routing.
 
 | Adapter | Role | Note |
 | --- | --- | --- |
-| Pi agent (`pi`) | job runtime | [pi.md](pi.md) (relocated verified note), onboarding in [pi-onboarding.md](pi-onboarding.md) |
+| Pi agent (`pi`) | job runtime | [pi.md](pi.md) — full note written from an authoring-time smoke run; still requires a live probe for the current host, onboarding in [pi-onboarding.md](pi-onboarding.md) |
 | In-session subagents (`internal`) | job runtime | [internal-routing.md](../references/internal-routing.md) |
 
 ### Documented probe targets
@@ -104,6 +130,9 @@ An adapter appears here only after a live probe and conformance run are recorded
 These runtimes are named as probe targets because they have a documented
 upstream surface. Their notes describe what to probe. Being listed is **not** a
 support claim, and none of them is in any inventory until a probe runs.
+
+This table answers *what to probe*; the table above answers *whether a note
+exists*. `pi` appears in both on purpose.
 
 | Target | Note | Upstream reference | Probe focus |
 | --- | --- | --- | --- |

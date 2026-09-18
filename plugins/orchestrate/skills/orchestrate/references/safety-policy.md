@@ -56,7 +56,11 @@ catch an absent or corrupt value. It never relabels a declared tier and never
 lowers one — in particular, a `R3` job keeps the R3 controls above.
 
 Raise a tier when the prompt, files, trust boundary or expected output demands
-it. Never lower a tier to meet a budget.
+it. Never lower a tier to meet a budget. A semantic **risk-floor raise is a
+raise**: the coordinator applies it as `max(derived, riskFloorDelta)`, it changes
+the required controls, and the attempt always escalates per
+[verification.md](verification.md). The signal supplies the delta; it never writes
+the tier.
 
 ## Minimum controls by concern
 
@@ -75,7 +79,10 @@ Profile safety behavior by observed control, never product reputation.
   when a native budget exists. Internal timeouts are accounting-only unless the
   current harness proves cancellation.
 - **Bypass controls.** Identify the live runtime's bypass options only to keep
-  them disabled. Never add one to a default command.
+  them disabled. Never add one to a default command, and never enable one for a
+  job. There is no approval that makes a bypass flag the right answer: a job that
+  needs more privilege gets a scoped permission with explicit approval, a stronger
+  external boundary, or `blocked` — never a disabled control switched back on.
 
 An auto-approved or all-or-nothing write path is **constrained** for any shared
 tree. It may handle read/report work; writing requires isolated R2 treatment.
@@ -92,6 +99,12 @@ Destructive or external work still requires explicit approval and the R3 gate.
   without repeating `--yes`.
 - A reference records a decision; it cannot grant authority by itself. Never
   infer permission from an arbitrary non-empty authority string.
+- **Egress is an external side effect.** Sending a prompt, repository context,
+  normalized error text or artifact names to a third-party provider is R3 work.
+  It needs its own authorized scope, and the decision plane may never authorize
+  its own egress by classifying its own call as harmless. With no recorded egress
+  authorization, the plane is disabled for that run and deterministic policy
+  proceeds.
 - A retry does not expand authority. Scope changes require a fresh decision.
 - Treat inherently auto-approved headless modes as constrained: read/report work
   or R2-isolated writes, never shared-tree destructive work.
@@ -119,10 +132,10 @@ Destructive or external work still requires explicit approval and the R3 gate.
 
 ## Presentation parity
 
-Reader-facing surfaces — `README.md`, the landing page, and plugin metadata —
-may summarize this policy but must not state a weaker control. Where a summary
-and this file disagree, the summary is corrected. A summary is never the
-authority.
+The parity rule — which surfaces are covered, the per-tier clauses that must
+survive a summary, and the correction procedure — is owned by
+[verification.md](verification.md). This file owns the control values those
+surfaces must not weaken. A summary is never the authority.
 
 ## The safety gate
 
@@ -146,7 +159,11 @@ This list binds the decision plane, the micro-arbiter, the graph optimizer, and
 any future scoring mechanism. None of them may:
 
 - grant, widen, or infer a permission or approval;
-- assign or lower a risk tier, or override any R0–R3 control;
+- assign or lower a risk tier, or override any R0–R3 control. A signal may raise
+  a floor; the coordinator applies a risk-floor raise as
+  `max(derived, riskFloorDelta)` and the attempt escalates, but the signal never
+  writes the tier itself;
+- authorize its own egress, or treat a self-issued classification as a control;
 - decide that a destructive or external action is authorized;
 - emit, select or rewrite a dispatch command;
 - mutate shared state outside a job's owned paths;
@@ -154,7 +171,10 @@ any future scoring mechanism. None of them may:
   permission, sandbox or authentication stop;
 - weaken a **review independence** requirement, including the unconditional
   requirement that review, audit, security and arbiter work be performed
-  independently of the producer;
+  independently of the producer. When no independent route exists the verdict is
+  labeled `not-independent`, and the job is `blocked` unless a fresh,
+  independently configured context substitutes for it. Recording the limitation is
+  required and is never sufficient on its own;
 - replace the C3 arbiter, or accept work the escalation matrix in
   [verification.md](verification.md) sends to it;
 - issue a final security verdict.

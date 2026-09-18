@@ -9,7 +9,7 @@ argument-hint: "<job-spec.yaml | task description | --resume <run-dir>> [--yes] 
 license: MIT
 metadata:
   author: bestagentkits
-  version: "2.0.0"
+  version: "2.0.1"
 ---
 
 # Orchestrate
@@ -131,7 +131,7 @@ normalized events                event-protocol.md
   ↓
 trace watchdog                   decision-plane.md signals → observation.md rules
   ↓
-triage / retry                   failure-modes.md
+triage / retry                   decision-plane.md taxonomy → failure-modes.md hard stop
   ↓
 deterministic checks             verification.md layer 1
   ↓
@@ -145,10 +145,11 @@ micro-arbiter gate               verification.md escalation matrix
 
 **Which layer owns each hop.** The planner owns the graph. The safety gate owns
 whether anything runs. The hard filter owns eligibility and floors; the decision
-plane supplies scored signals and `floor_delta`, which may only raise a floor.
-The optimizer owns reduction, after routing. Deterministic checks own failure.
-The escalation matrix owns acceptance. The C3 arbiter owns judgment where
-escalated. Nothing probabilistic decides any of these.
+plane supplies scored signals, `capabilityFloorDelta`, and `riskFloorDelta`, which
+may only raise a floor — a risk-floor raise also forces C3. The optimizer owns
+reduction, after routing. Deterministic checks own failure. The escalation matrix
+owns acceptance. The C3 arbiter owns judgment where escalated. Nothing
+probabilistic decides any of these.
 
 ### 1. Brainstorm and intake
 
@@ -210,11 +211,13 @@ brief in this file; the authority is that file.
 - Treat inherently auto-approved headless modes as constrained: read/report
   work or R2-isolated writes, never shared-tree destructive work. A worktree
   prevents edit collisions but is not an OS sandbox.
-- Keep destructive and credentialed external actions off prompt-only isolation,
-  and enable a permission bypass only when the user approved that exact action
-  and a stronger external boundary contains the residual risk. Onboarding
-  installs are visible and reversible; profile overwrites are snapshotted first;
-  credentials are entered only by the user.
+- Keep destructive and credentialed external actions off prompt-only isolation.
+  Never enable a permission-bypass flag: a job that needs more privilege gets a
+  scoped permission with explicit approval, a stronger external boundary, or it is
+  blocked. The rule and its reasoning are owned by
+  [safety-policy.md](references/safety-policy.md). Onboarding installs are visible
+  and reversible; profile overwrites are snapshotted first; credentials are
+  entered only by the user.
 - Start with read-only or scoped-write behavior. Parallel writers use separate
   worktrees and disjoint ownership, and failed output is preserved for diagnosis
   rather than hidden or relabeled.
@@ -257,15 +260,19 @@ brief in this file; the authority is that file.
   layer 1. A failing check fails the attempt; no probabilistic signal overrules
   it.
 - Consult the escalation matrix. Accept without a C3 call only when the
-  **recorded** risk tier is R0 or R1, a valid per-classifier calibration record
-  exists, and every other condition holds. Otherwise escalate.
-- **R2 and R3 always escalate to C3.** So do security, architecture, high-impact
-  implementation, external/destructive work, contradictory evidence, and any
-  malformed or low-confidence micro-arbiter result.
+  attempt's **recorded** risk tier is R0 or R1 with no risk-floor delta applied, a
+  valid per-classifier calibration record exists, and every other condition holds.
+  Otherwise escalate.
+- **R2 and R3 always escalate to C3.** So do security and audit, `review` or any
+  job whose artifact is a verdict on another job's work, architecture, high-impact
+  implementation, external/destructive work, any attempt whose tier was raised by
+  a `riskFloorDelta`, contradictory evidence, an absent injection-fixture result,
+  and any malformed or low-confidence micro-arbiter result.
 - For C3, use a separate judgment route selected by
-  [routing-policy.md](references/routing-policy.md). Prefer independently
-  configured or different-family review when live evidence proves it; disclose a
-  same-family fallback.
+  [routing-policy.md](references/routing-policy.md). Prefer a different model
+  family or a freshly and independently configured agent. When live evidence
+  proves no independent route exists, label the verdict `not-independent` and
+  either substitute a fresh, independently configured context or block.
 - A System-1 micro-arbiter verdict is **never** independent review evidence for a
   C3 decision. It is a gate, not a reviewer.
 

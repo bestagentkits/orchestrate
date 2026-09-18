@@ -423,7 +423,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
           call the work done until deterministic checks pass and — for anything above read-only or
           scoped-write work — an independent arbiter agrees.
         </p>
-        <p class="byline" data-i18n="byline">Skill · version 2.0.0 · maintained by bestagentkits</p>
+        <p class="byline" data-i18n="byline">Skill · version 2.0.1 · maintained by bestagentkits</p>
 
         <div class="cta-row">
           <a class="btn btn-primary" href="#install" data-i18n="ctaInstall">Install the plugin →</a>
@@ -436,7 +436,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
         <dl>
           <dt data-i18n="specCmd">Command</dt><dd>/orchestrate</dd>
           <dt data-i18n="specKind">Kind</dt><dd data-i18n="specKindV">Skill · dev-tools</dd>
-          <dt data-i18n="specVer">Version</dt><dd>2.0.0</dd>
+          <dt data-i18n="specVer">Version</dt><dd>2.0.1</dd>
           <dt data-i18n="specLic">License</dt><dd>MIT</dd>
           <dt data-i18n="specIn">Input</dt><dd data-i18n="specInV">YAML · prose · --resume</dd>
           <dt data-i18n="specOut">Output</dt><dd data-i18n="specOutV">report.md + capture</dd>
@@ -525,7 +525,8 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
           <h3 data-i18n="s3">Discover, profile, route, onboard</h3>
           <p class="stage-body" data-i18n="s3b">Build a live runtime inventory, profile each candidate's
           permissions, isolation, capture and budgets, then resolve a route by capability and risk tier.
-          A missing, unauthenticated, or under-controlled candidate cannot satisfy a route. A pinned
+          An optional System-1 layer may supply scored signals, and it may only raise a floor, never lower
+          one. A missing, unauthenticated, or under-controlled candidate cannot satisfy a route. A pinned
           runtime that is missing is onboarded as a visible setup step.</p>
         </article>
 
@@ -533,8 +534,9 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
           <div class="stage-n">04</div>
           <h3 data-i18n="s4">Apply the safety gate</h3>
           <p class="stage-body" data-i18n="s4b">Confirm every cwd, writable root, and expected side effect.
-          Least privilege by default; permission bypass off by default. Destructive, deployment, release,
-          or credentialed work needs explicit approval for that exact scope.</p>
+          Least privilege by default; a permission bypass is never enabled — a job that needs more privilege
+          gets scoped permissions with explicit approval, a stronger external boundary, or it is blocked.
+          Destructive, deployment, release, or credentialed work needs approval for that exact scope.</p>
         </article>
 
         <article class="stage">
@@ -550,10 +552,13 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
           <div class="stage-n">06</div>
           <h3 data-i18n="s6">Arbiter review</h3>
           <p class="stage-body" data-i18n="s6b">A separate judgment route — preferably a different model
-          family, disclosed when it isn't — compares each escalated result against its expected output,
-          runs the declared checks, and flags contradictions, unsupported claims, and missing artifacts.
-          R2, R3 and all judgment work always escalate here; read-only and scoped-write work may clear on
-          a calibrated micro-arbiter gate instead.</p>
+          family — compares each escalated result against its expected output, runs the declared checks, and
+          flags contradictions, unsupported claims, and missing artifacts. R2, R3, any job whose artifact is
+          a verdict on another job's work, and any attempt whose tier a semantic signal raised always
+          escalate here. Read-only and scoped-write work may clear on a calibrated micro-arbiter gate only
+          when no risk-floor raise applied. With no different-family route the verdict is labeled
+          <code>not-independent</code> and the job is blocked, unless a fresh, independently configured
+          context substitutes.</p>
         </article>
 
         <article class="stage">
@@ -590,9 +595,52 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
           <div class="tier r-low"><code>R0</code><span data-i18n="r0"><b>Observe.</b> Read and report only. Explicit cwd, bounded timeout, captured result, no unnecessary write or shell grant.</span></div>
           <div class="tier"><code>R1</code><span data-i18n="r1"><b>Scoped write.</b> Reversible edits in owned files. Scoped write boundary, tool restrictions, diff capture, no permission bypass.</span></div>
           <div class="tier"><code>R2</code><span data-i18n="r2"><b>Isolated write.</b> Parallel, high-impact, untrusted, or hard-to-revert changes. Separate worktree or stronger isolation, enforced sandbox where available, explicit checks and arbiter review.</span></div>
-          <div class="tier"><code>R3</code><span data-i18n="r3"><b>External / destructive.</b> Deploy, release, delete, credentialed side effects. Explicit approval, rollback plan — blocked when controls are unavailable.</span></div>
+          <div class="tier"><code>R3</code><span data-i18n="r3"><b>External / destructive.</b> Deploy, release, delete, credentialed, or other external side effect. Explicit approval, rollback plan, <b>strongest verified controls</b> — blocked when controls are unavailable.</span></div>
         </div>
       </div>
+    </div>
+  </section>
+
+  <!-- ============ DECISION PLANE ============ -->
+  <section>
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">04</span>
+        <h2 data-i18n="h2Plane">A probabilistic layer that may only tighten the gate</h2>
+        <p class="sec-deck" data-i18n="deckPlane">A small classifier can watch traces, triage failures and
+        pre-score an attempt before the arbiter. It is optional, provider-neutral, and it is allowed to make
+        exactly one kind of change: raise a floor.</p>
+      </div>
+
+      <div class="two-col">
+        <div class="tier-card">
+          <h3 data-i18n="planeTitle">What it may do</h3>
+          <div class="tier"><code>01</code><span data-i18n="pn1">Watch traces continuously and flag a stalled or drifting attempt.</span></div>
+          <div class="tier"><code>02</code><span data-i18n="pn2">Triage a failure into the failure taxonomy.</span></div>
+          <div class="tier"><code>03</code><span data-i18n="pn3">Supply three scored signals to the pre-arbiter gate.</span></div>
+          <div class="tier"><code>04</code><span data-i18n="pn4">Raise a floor, recorded as <code>capabilityFloorDelta</code> or <code>riskFloorDelta</code>.</span></div>
+        </div>
+        <div class="tier-card">
+          <h3 data-i18n="planeNoTitle">What it may never do</h3>
+          <div class="tier"><code>01</code><span data-i18n="px1">Decide eligibility, a tier, or a control. The hard filter and the safety gate own those.</span></div>
+          <div class="tier"><code>02</code><span data-i18n="px2">Lower a floor, restore a rejected candidate, or widen the no-C3 path.</span></div>
+          <div class="tier"><code>03</code><span data-i18n="px3">Authorize its own egress. With no recorded user authorization scope, the plane is disabled for the run.</span></div>
+          <div class="tier"><code>04</code><span data-i18n="px4">Accept an attempt. Only the escalation matrix does that.</span></div>
+        </div>
+      </div>
+
+      <p class="sec-deck" data-i18n="planeFloor">A <code>riskFloorDelta</code> changes the recorded tier,
+      adds controls, and always escalates to C3 — so a classifier can shrink the fast path, never extend it.</p>
+
+      <p class="sec-deck" data-i18n="planeCal">The no-C3 path needs 30 C3-audited outcomes, a measured
+      agreement of at least 0.95, and a threshold of at least 0.90. Those are policy constants, not job
+      inputs, so a spec cannot set its own bar. With no valid record the plane observes and logs only — it
+      never decides.</p>
+
+      <p class="sec-deck" data-i18n="planeAdapters">The same discipline applies to runtimes. A file under
+      <code>runtimes/</code> is a note, not a support claim. Only a live probe recorded in
+      <code>runtimes.json</code> makes a runtime selectable, and only a verified <code>available</code>
+      state makes it eligible for routing.</p>
     </div>
   </section>
 
@@ -600,7 +648,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
   <section>
     <div class="wrap">
       <div class="sec-head">
-        <span class="sec-num">04</span>
+        <span class="sec-num">05</span>
         <h2 data-i18n="h2Safe">Defaults that assume something will go wrong</h2>
       </div>
       <div class="cards">
@@ -649,7 +697,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
   <section>
     <div class="wrap">
       <div class="sec-head">
-        <span class="sec-num">05</span>
+        <span class="sec-num">06</span>
         <h2 data-i18n="h2Spec">A job graph, in plain YAML</h2>
         <p class="sec-deck" data-i18n="deckSpec">Write it once and rerun it. Free-form requests get the same
         treatment — the coordinator writes the spec first, then dispatches from it. Placeholders are resolved
@@ -719,7 +767,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
   <section id="install">
     <div class="wrap">
       <div class="sec-head">
-        <span class="sec-num">06</span>
+        <span class="sec-num">07</span>
         <h2 data-i18n="h2Install">Install</h2>
         <p class="sec-deck" data-i18n="deckInstall">Orchestrate ships as a Claude Code plugin from its own
         marketplace. Add the marketplace, install the plugin, restart Claude Code.</p>
@@ -785,7 +833,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
   <section>
     <div class="wrap">
       <div class="sec-head">
-        <span class="sec-num">07</span>
+        <span class="sec-num">08</span>
         <h2 data-i18n="h2Limits">What it is not</h2>
         <p class="sec-deck" data-i18n="deckLimits">Stated plainly, because an orchestrator that oversells its
         guarantees is worse than no orchestrator.</p>
@@ -831,7 +879,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
     kicker: "Một Claude Code Skill · Giấy phép MIT",
     headlineEm: "cả đội tác tử.",
     standfirst: "Một điều phối viên. Nhiều tác tử. Orchestrate chia việc ra nhiều runtime coding-agent đã được xác minh trực tiếp và các subagent trong phiên — định tuyến từng tác vụ theo năng lực và rủi ro, cô lập các job ghi song song trong git worktree riêng, ghi lại mọi câu lệnh, và không tuyên bố hoàn thành cho tới khi các bài kiểm tra tất định đạt, và — với mọi việc vượt trên công việc chỉ đọc hoặc ghi có phạm vi — một trọng tài độc lập đồng ý.",
-    byline: "Skill · phiên bản 2.0.0 · duy trì bởi bestagentkits",
+    byline: "Skill · phiên bản 2.0.1 · duy trì bởi bestagentkits",
     ctaInstall: "Cài đặt plugin →",
     ctaSource: "Đọc mã nguồn",
     specTitle: "Thông số",
@@ -853,13 +901,13 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
     s2: "Dựng đồ thị công việc",
     s2b: "Biến kết quả mong muốn thành các job có task, cwd, timeout, đầu ra kỳ vọng và quyền sở hữu tệp rõ ràng. <code>depends_on</code> tạo thành các tầng. Các job cùng tầng chỉ chạy song song khi quyền sở hữu và đầu ra không chồng lấn.",
     s3: "Khám phá, lập hồ sơ, định tuyến, onboarding",
-    s3b: "Dựng danh sách runtime trực tiếp, lập hồ sơ quyền hạn, mức cô lập, khả năng ghi nhận và ngân sách của từng ứng viên, rồi chọn tuyến theo tầng năng lực và rủi ro. Ứng viên thiếu, chưa xác thực hoặc kiểm soát yếu thì không đủ điều kiện nhận tuyến. Runtime được ghim mà thiếu thì onboarding chạy như một bước thiết lập hiển thị.",
+    s3b: "Dựng danh sách runtime trực tiếp, lập hồ sơ quyền hạn, mức cô lập, khả năng ghi nhận và ngân sách của từng ứng viên, rồi chọn tuyến theo tầng năng lực và rủi ro. Một lớp System-1 tùy chọn có thể cung cấp tín hiệu đã chấm điểm, nhưng chỉ được nâng ngưỡng sàn, không bao giờ được hạ. Ứng viên thiếu, chưa xác thực hoặc kiểm soát yếu thì không đủ điều kiện nhận tuyến. Runtime được ghim mà thiếu thì onboarding chạy như một bước thiết lập hiển thị.",
     s4: "Áp cổng an toàn",
-    s4b: "Xác nhận từng cwd, thư mục được ghi và tác dụng phụ dự kiến. Mặc định đặc quyền tối thiểu; mọi chế độ bỏ qua xin quyền đều tắt. Việc phá hủy, triển khai, phát hành hay dùng thông tin xác thực đều cần chấp thuận đúng phạm vi đó.",
+    s4b: "Xác nhận từng cwd, thư mục được ghi và tác dụng phụ dự kiến. Mặc định đặc quyền tối thiểu; không bao giờ bật chế độ bỏ qua xin quyền — job cần thêm đặc quyền sẽ nhận quyền có phạm vi kèm chấp thuận, một ranh giới ngoài mạnh hơn, hoặc bị chặn. Việc phá hủy, triển khai, phát hành hay dùng thông tin xác thực đều cần chấp thuận đúng phạm vi đó.",
     s5: "Điều phối, quan sát, kiểm chứng",
     s5b: "Tạo worktree trước khi dispatch, chạy các job độc lập tới giới hạn concurrency, cập nhật <code>state.json</code> ở mọi chuyển trạng thái. Ghi lại câu lệnh đã che bí mật, stdout/stderr có giới hạn, trạng thái thoát, thời gian chạy và artifact, và quan sát mọi attempt tới khi lắng xuống.",
     s6: "Trọng tài rà soát",
-    s6b: "Một tuyến phán xét riêng — ưu tiên khác họ model, và công bố rõ khi không được như vậy — đối chiếu từng kết quả đã được chuyển lên với đầu ra kỳ vọng, chạy các bài kiểm tra đã khai báo, và chỉ ra mâu thuẫn, tuyên bố thiếu căn cứ, artifact bị thiếu. R2, R3 và mọi công việc phán đoán luôn được chuyển lên đây; công việc chỉ đọc và ghi có phạm vi có thể được thông qua bằng cổng micro-arbiter đã hiệu chuẩn.",
+    s6b: "Một tuyến phán xét riêng — ưu tiên khác họ model — đối chiếu từng kết quả đã được chuyển lên với đầu ra kỳ vọng, chạy các bài kiểm tra đã khai báo, và chỉ ra mâu thuẫn, tuyên bố thiếu căn cứ, artifact bị thiếu. R2, R3, mọi job có artifact là phán quyết về việc của job khác, và mọi lần thử bị tín hiệu ngữ nghĩa nâng tầng đều luôn được chuyển lên đây. Công việc chỉ đọc hoặc ghi có phạm vi chỉ qua được cổng micro-arbiter đã hiệu chuẩn khi không có lần nâng tầng rủi ro nào. Khi không có tuyến khác họ, phán quyết bị gắn nhãn <code>not-independent</code> và job bị chặn, trừ khi có một ngữ cảnh mới, được cấu hình độc lập, thay thế.",
     s7: "Báo cáo",
     s7b: "Một tệp <code>report.md</code> gồm trạng thái từng job, runtime và model đã chốt, các tầng, artifact, lỗi, phán quyết trọng tài, lệnh tái lập, diff worktree còn chờ tích hợp, và các câu hỏi chưa có lời giải — liệt kê thẳng thắn, ở cuối.",
 
@@ -873,7 +921,23 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
     r0: "<b>Quan sát.</b> Chỉ đọc và báo cáo. cwd tường minh, timeout có giới hạn, kết quả được ghi lại, không cấp quyền ghi hay shell thừa.",
     r1: "<b>Ghi có phạm vi.</b> Sửa đổi hoàn tác được trong các tệp thuộc sở hữu. Ranh giới ghi rõ ràng, hạn chế công cụ, ghi lại diff, không bỏ qua xin quyền.",
     r2: "<b>Ghi có cô lập.</b> Thay đổi song song, tác động lớn, không tin cậy hoặc khó hoàn tác. Worktree riêng hoặc cô lập mạnh hơn, sandbox khi có, kiểm tra tường minh và bắt buộc trọng tài rà soát.",
-    r3: "<b>Ra ngoài / phá hủy.</b> Deploy, release, xóa, dùng thông tin xác thực. Cần chấp thuận rõ ràng và kế hoạch rollback — bị chặn khi thiếu biện pháp kiểm soát.",
+    r3: "<b>Ra ngoài / phá hủy.</b> Deploy, release, xóa, dùng thông tin xác thực, hoặc mọi tác dụng phụ ra bên ngoài. Cần chấp thuận rõ ràng, kế hoạch rollback, và biện pháp kiểm soát mạnh nhất đã xác minh — bị chặn khi thiếu.",
+
+    h2Plane: "Một lớp xác suất chỉ được siết cổng, không được nới",
+    deckPlane: "Một classifier nhỏ có thể quan sát vết chạy, phân loại lỗi và chấm điểm trước khi tới trọng tài. Nó là tùy chọn, không phụ thuộc provider, và chỉ được phép làm đúng một loại thay đổi: nâng một ngưỡng sàn.",
+    planeTitle: "Lớp này được phép làm gì",
+    pn1: "Quan sát vết chạy liên tục và đánh dấu một lần thử bị đình trệ hoặc lệch hướng.",
+    pn2: "Phân loại lỗi theo taxonomy trong tài liệu failure.",
+    pn3: "Cung cấp ba tín hiệu đã chấm điểm cho cổng tiền trọng tài.",
+    pn4: "Nâng một ngưỡng sàn, ghi lại thành <code>capabilityFloorDelta</code> hoặc <code>riskFloorDelta</code>.",
+    planeNoTitle: "Những gì nó tuyệt đối không được làm",
+    px1: "Quyết định tính đủ điều kiện, tầng rủi ro hay biện pháp kiểm soát. Bộ lọc cứng và cổng an toàn sở hữu những thứ đó.",
+    px2: "Hạ ngưỡng sàn, phục hồi ứng viên đã bị loại, hoặc mở rộng đường đi không cần C3.",
+    px3: "Tự cấp quyền ra ngoài cho chính nó. Không có phạm vi chấp thuận đã ghi, lớp này bị tắt cho cả lượt chạy.",
+    px4: "Chấp nhận một lần thử. Chỉ ma trận leo thang được làm điều đó.",
+    planeFloor: "Một <code>riskFloorDelta</code> làm thay đổi tầng được ghi nhận, thêm biện pháp kiểm soát, và luôn leo thang lên C3 — nên classifier chỉ có thể thu hẹp đường nhanh, không bao giờ mở rộng nó.",
+    planeCal: "Đường không cần C3 yêu cầu 30 kết quả đã được C3 kiểm toán, mức đồng thuận đo được ít nhất 0.95 và ngưỡng ít nhất 0.90. Đây là hằng số chính sách, không phải đầu vào của job, nên một spec không thể tự đặt chuẩn cho mình. Khi chưa có bản ghi hợp lệ, lớp này chỉ quan sát và ghi log — không bao giờ quyết định.",
+    planeAdapters: "Kỷ luật tương tự áp dụng cho runtime. Một tệp trong <code>runtimes/</code> chỉ là ghi chú, không phải tuyên bố hỗ trợ. Chỉ một lần dò trực tiếp được ghi vào <code>runtimes.json</code> mới khiến runtime có thể được chọn, và chỉ trạng thái <code>available</code> đã xác minh mới khiến nó đủ điều kiện nhận tuyến.",
 
     h2Safe: "Mặc định được thiết kế với giả định sẽ có sự cố",
     f1: "Cô lập bằng worktree",

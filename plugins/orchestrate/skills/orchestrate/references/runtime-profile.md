@@ -306,8 +306,10 @@ a capability claim:
 - **No probability may set an evidence-backed field.** A hint cannot change
   `state`, `approval`, `toolGating`, `isolation`, `cwdControl`, `headless`,
   `capture`, `resume` or `structuredOutput`.
-- **A hint is ineligible for routing.** It may order candidates only after the
-  deterministic hard filter has already decided eligibility.
+- **A hint is ineligible for eligibility, floors, tiers and controls.** It may
+  only reorder candidates that already passed the deterministic hard filter, and
+  that ordering contribution is recorded with the route. It never adds, restores
+  or removes a candidate, and it never changes a floor or a tier.
 - **A control claim that the probe could not prove stays `unverified`** no matter
   how confident the classifier is. An advertised sandbox flag whose OS
   enforcement is unverified is `unverified`, not `os-sandbox`.

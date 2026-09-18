@@ -58,28 +58,40 @@ checks, and answers the arbiter questions below.
 
 Accept without a C3 call only when **all** hold:
 
-1. the **recorded** risk tier is `R0` or `R1`;
+1. the **attempt's recorded** risk tier is `R0` or `R1`, **and** no risk-floor
+   `floor_delta` was applied to it;
 2. `importance: normal`;
 3. every Layer 1 deterministic check passed and the attempt is `settled`;
 4. a **valid calibration record** exists for the classifier candidate in use
    (below);
-5. every micro-arbiter signal clears the recorded threshold;
+5. every micro-arbiter signal clears the recorded threshold **in its own
+   direction**, per the signal-direction table below;
 6. the micro-arbiter returned `well_formed: true` and `low_confidence: false`;
 7. the job does not set `approval`, does not emit a dispatch, and does not mutate
-   shared state outside its owned paths.
+   shared state outside its owned paths;
+8. the **injection fixture** ran for this attempt and recorded no change to the
+   declared action set;
+9. the run accepts no job whose artifact is itself a **verdict** on another job's
+   work — a `review`, `audit`, `security` or arbiter result.
 
 Otherwise escalate to C3. Escalation is the default; acceptance is the exception.
 
 **Always escalate to C3 regardless of tier**, because these are judgment:
 
 - security, audit, or any security-sensitive change;
+- **`review`, or any job whose declared artifact is a verdict on another job's
+  work.** A verdict is judgment output, and a micro-arbiter is by its own
+  definition not independent review evidence;
 - architecture or public-contract decisions;
 - `importance: high` implementation;
 - external, destructive, credentialed, or otherwise hard-to-reverse work;
 - parallel or untrusted-prompt writes;
+- **any attempt carrying a non-zero `riskFloorDelta`**, because a probabilistic
+  signal moved the tier;
 - contradictory evidence between outputs or checks;
 - any malformed, out-of-vocabulary, or low-confidence micro-arbiter result;
 - a missing, invalid, or expired calibration record;
+- **an absent or failing injection-fixture result**;
 - a job that sets `approval`, emits a dispatch, or mutates shared state.
 
 ### Fail-closed rules
@@ -114,7 +126,7 @@ between them. A record names the candidate id it was measured on.
 | Field | Meaning |
 | --- | --- |
 | `classifier` | the candidate id measured |
-| `threshold` | the numeric cut-off applied to each signal |
+| `threshold` | the numeric cut-off applied to each signal; must be at or above `INITIAL_THRESHOLD` |
 | `signals` | which signals the threshold applies to |
 | `units` | the probability scale, recorded explicitly |
 | `sampleCount` | comparable C3-audited outcomes observed |
@@ -123,13 +135,46 @@ between them. A record names the candidate id it was measured on.
 | `measuredAt` | when the sample was taken |
 | `expiresAt` | when the record stops being valid |
 
-**Minimum sample.** The minimum is **owner-fixed, not self-declared**: it is the
-`calibration.minimum_samples` run-policy field defined in
-[job-spec.md](job-spec.md), independent of any record. A
-record is valid only when `sampleCount` meets that fixed minimum **and** its
-`minimum` field equals it. A record that omits the field, or declares a lower
-minimum than the policy value, is invalid and escalates — otherwise a record
-would validate itself.
+**Owner-fixed values.** These are policy constants, owned here and nowhere else.
+A record cannot supply them, and a run cannot lower them.
+
+| Constant | Value | Meaning |
+| --- | --- | --- |
+| `MINIMUM_SAMPLES` | `30` | Comparable C3-audited outcomes a record must carry before the no-C3 path may be used at all |
+| `AGREEMENT_FLOOR` | `0.95` | Minimum measured agreement between micro-arbiter and C3 verdicts |
+| `INITIAL_THRESHOLD` | `0.90` | Numeric cut-off every signal is measured against |
+| `UNITS` | `probability` in `[0,1]` | Scale of every signal and of the threshold |
+
+**Signal direction.** One threshold is applied with a per-signal direction,
+because `materially_unresolved` is harmful when it is **high**:
+
+| Signal | Clears when |
+| --- | --- |
+| `artifact_matches_expected_output` | `>= threshold` |
+| `claims_supported_by_evidence` | `>= threshold` |
+| `materially_unresolved` | `< threshold` |
+
+"Every micro-arbiter signal clears the recorded threshold" in the escalation
+matrix means exactly the comparison in this table, per signal. A signal that is
+absent, non-numeric, or outside `[0,1]` is malformed and escalates.
+
+**Validity.** A record is valid only when **all** hold:
+
+- `classifier` names the candidate in use for this attempt;
+- `sampleCount` meets `calibration.minimum_samples`, and the record's `minimum`
+  equals that same value;
+- that value is at or above `MINIMUM_SAMPLES`;
+- `agreement` is at or above `AGREEMENT_FLOOR` — a record measuring *disagreement*
+  with C3 is invalid, not merely weak;
+- `threshold` is at or above `INITIAL_THRESHOLD`;
+- `signals` equals the **full** declared signal set above, not a subset, so a
+  harmful signal cannot be left unmeasured;
+- `units` is declared;
+- `expiresAt` has not passed.
+
+A record that fails any clause is invalid and escalates. Because the floors are
+constants owned here, a record cannot validate itself and a run cannot lower its
+own bar by configuration.
 
 **Expiry.** A record that has not re-validated by `expiresAt` is stale and
 escalates. A threshold that never re-validates drifts into permission.
@@ -156,7 +201,7 @@ the answer; the questions do not disappear.
 | 3 | Do outputs contradict each other? | Layer 1 cross-output check; **forces C3** if a contradiction is found |
 | 4 | Were all listed checks run, and did they pass? | Layer 1 `verification` command results |
 | 5 | Are claims supported by paths, command output, citations, tests, or artifacts? | micro-arbiter `claims_supported_by_evidence` on the no-C3 path; the C3 arbiter otherwise |
-| 6 | Did every route meet its capability and risk floor? | `routing-policy.md` recorded floors plus the recorded `riskTier` |
+| 6 | Did every route meet its capability and risk floor? | `routing-policy.md` recorded floors plus the attempt's recorded `riskTier`, including any `riskFloorDelta` applied |
 | 7 | Was runtime/model/agent availability revalidated for this run? | `runtimes.json` evidence timestamps |
 | 8 | Are destructive actions approved and reversible? | `safety-policy.md` authority record; **forces C3** when destructive work is in scope |
 | 9 | Are unresolved questions listed plainly? | the report's unresolved-questions section; **forces C3** when any remain |
@@ -181,21 +226,46 @@ The arbiter route must satisfy the judgment floor in
 **Independence.** Independence is verified from the live inventory, never
 asserted from a provider name or an executable name. Compare resolved model
 families: two different harnesses may invoke the same provider and model, which
-is not independent review. When only a same-family route is available, disclose
-it explicitly and record it as a limitation.
+is not independent review.
+
+This requirement is **binding**, not a preference with a disclosure fallback. When
+live inventory proves no different-family route exists:
+
+1. the verdict is **not independent** — label it `not-independent` in the arbiter
+   verdict and in the report; and
+2. the review may proceed only with a fresh, independently configured agent
+   context as the minimum substitute; otherwise the job is `blocked`.
+
+Recording a same-family limitation is required, and is never sufficient on its
+own. [safety-policy.md](safety-policy.md) owns the rule that no automated signal
+may weaken this requirement; this file owns how it is measured and reported.
 
 A System-1 micro-arbiter verdict is **never** independent review evidence for a
 C3 decision. It is a gate, not a reviewer.
 
 ## Presentation parity
 
+This section is the **sole owner** of the parity rule.
+[safety-policy.md](safety-policy.md) owns the control values; this file owns the
+rule that presentation surfaces must not weaken them, and
+[README.md](../../../../../README.md) reproduces the check.
+
 Reader-facing surfaces — `README.md`, the landing page, and plugin metadata — may
 summarize acceptance but must not promise more or less than this file states:
 
 - They must not claim that every job is arbiter-reviewed, because R0/R1 work may
   be micro-arbiter-accepted under the conditions above.
-- They must not state a weaker R2 control than
-  [safety-policy.md](safety-policy.md) defines.
+- They must not state a weaker control for **any** tier than
+  [safety-policy.md](safety-policy.md) defines — not only R2. Parity is checked
+  for all four tiers, each against its own required clauses:
+
+| Tier | Clause that must survive any summary |
+| --- | --- |
+| R0 | explicit cwd, bounded timeout, captured result, no unnecessary write or shell grant |
+| R1 | scoped write boundary, tool restrictions, diff capture, no permission bypass |
+| R2 | worktree **or stronger isolation**, sandbox where available, checks **and** arbiter review |
+| R3 | explicit user approval, preview/rollback plan, **strongest verified controls**, block when unavailable |
+
 - Where a summary and an authority disagree, the summary is corrected, and the
   disagreement is reported rather than resolved silently.
 
@@ -212,6 +282,15 @@ grep -n 'R0\|R1\|R2\|R3' $S/verification.md | head
 grep -ni 'always escalate' $S/verification.md
 grep -n 'observes and logs only\|sampleCount\|expiresAt\|C3-audited' $S/verification.md
 grep -n 'acceptedWithoutC3' $S/verification.md $S/job-spec.md
+# the two floors and the risk-delta escalation
+# note: these two tokens also appear here, in this checklist, by design
+grep -n 'riskFloorDelta' $S/verification.md $S/job-spec.md
+# owner-fixed calibration floors
+grep -n 'MINIMUM_SAMPLES\|AGREEMENT_FLOOR\|INITIAL_THRESHOLD' $S/verification.md
+# a verdict job always escalates
+grep -n 'verdict on another job' $S/verification.md
+# parity covers every tier, not only R2
+grep -n 'weaker control for \*\*any\*\* tier' $S/verification.md
 grep -c '^| [0-9] ' $S/verification.md   # nine arbiter questions
 # boundary: the accept predicate must not appear in the plane's own doc
 grep -n 'accept without C3' $S/decision-plane.md && echo "FAIL: leaked" || echo "boundary clean"

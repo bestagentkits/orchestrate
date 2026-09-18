@@ -38,10 +38,12 @@ Orchestrate treats those as the actual problem:
   time and artifacts under one run directory.
 - **Nothing is reported finished** until it clears verification. Deterministic
   checks run first; then an escalation gate decides whether a C3 arbiter is
-  required. R0/R1 work may be accepted without a C3 call only with a valid
-  calibration record. **R2, R3 and all judgment work always go to an independent
-  C3 route**, or to a same-family fallback that is disclosed and recorded as a
-  limitation.
+  required. An attempt may be accepted without a C3 call only when its recorded
+  tier is R0/R1 with no risk-floor raise, a valid per-classifier calibration
+  record exists, and every other gate condition holds. **R2, R3 and all judgment
+  work always go to an independent C3 route.** When no independent route exists,
+  the verdict is labeled `not-independent` and the job is blocked unless a fresh,
+  independently configured context substitutes for it.
 
 ## Pipeline
 
@@ -75,7 +77,7 @@ marked `blocked`, never quietly downgraded.
 | `R0` observe | Read/report only | Explicit cwd, bounded timeout, captured result, no unnecessary write or shell grant |
 | `R1` scoped write | Reversible edits in owned files | Scoped write boundary, tool restrictions, diff capture, no permission bypass |
 | `R2` isolated write | Parallel, high-impact, untrusted, or hard-to-revert changes | Separate worktree **or stronger isolation**, enforced sandbox where available, **explicit checks and arbiter review** |
-| `R3` external/destructive | Deploy, release, delete, credentialed side effects | Explicit user approval, preview/rollback plan; blocked when those controls are unavailable |
+| `R3` external/destructive | Deploy, release, delete, credentialed, or other external side effect | Explicit user approval, preview/rollback plan, **strongest verified controls**; blocked when those controls are unavailable |
 
 Risk tiers are defined once, in
 [`safety-policy.md`](plugins/orchestrate/skills/orchestrate/references/safety-policy.md);
@@ -91,7 +93,10 @@ it never decides:
 - It is sourced from a runtime **already in the live inventory**; there is no new
   provider dependency. Jev (TypeSafe) is the reference implementation and one
   optional provider.
-- Its `floor_delta` may only **raise** a floor. A lowering signal is discarded.
+- Its `floor_delta` splits into `capabilityFloorDelta` and `riskFloorDelta`. Both
+  may only **raise** a floor, and a lowering signal is discarded. A risk-floor
+  raise changes the recorded tier, adds controls, and always escalates to C3 — so
+  a probabilistic signal can shrink the no-C3 path, never widen it.
 - It never grants a permission, assigns a risk tier, emits a command, mutates
   shared state, weakens review independence, or replaces the C3 arbiter.
 - With no eligible classifier it is **disabled** and deterministic policy decides.
@@ -227,8 +232,8 @@ one owns what:
 | [`output-layout.md`](plugins/orchestrate/skills/orchestrate/references/output-layout.md) | Run-directory and supervisor capture tree, decision artifacts, export rules |
 | [`metrics-and-self-improvement.md`](plugins/orchestrate/skills/orchestrate/references/metrics-and-self-improvement.md) | Run comparison, arbiter-gate telemetry, calibration inputs |
 | [`runtimes/README.md`](plugins/orchestrate/skills/orchestrate/runtimes/README.md) | The adapter index, the authoring procedure, and the per-runtime probe targets |
-| [`runtimes/pi.md`](plugins/orchestrate/skills/orchestrate/runtimes/pi.md) · [`pi-onboarding.md`](plugins/orchestrate/skills/orchestrate/runtimes/pi-onboarding.md) | Pi session/dispatch contract, and Pi install/auth/projection |
-| [`runtimes/`](plugins/orchestrate/skills/orchestrate/runtimes) — `omp`, `agy`, `grok`, `claude`, `codex`, `gemini`, `opencode`, `aider` | Capability maps. `claude`, `codex`, `gemini`, `opencode` and `aider` are fenced **unverified stubs**, not support claims |
+| [`runtimes/pi.md`](plugins/orchestrate/skills/orchestrate/runtimes/pi.md) · [`pi-onboarding.md`](plugins/orchestrate/skills/orchestrate/runtimes/pi-onboarding.md) | Pi session/dispatch contract and Pi install/auth/projection. A full note written from an authoring-time smoke run — not a live probe for your host, which every run still requires |
+| [`runtimes/`](plugins/orchestrate/skills/orchestrate/runtimes) — `omp`, `agy`, `grok`, `claude`, `codex`, `gemini`, `opencode`, `aider` | Adapter index. `omp`, `agy` and `grok` are documented probe targets; `claude`, `codex`, `gemini`, `opencode` and `aider` are fenced **unverified stubs**. None of the eight is a support claim, and none is in any inventory until a probe is recorded |
 
 ## Upgrading
 
@@ -259,9 +264,12 @@ What else changed:
   eligibility and floors; an optional provider-neutral System-1 plane supplies
   scored signals that may only *raise* a floor. Safety authority did not move: it
   is consolidated in `safety-policy.md`.
-- **Acceptance is now tiered and explicit.** R0/R1 work may be accepted without a
-  C3 call only with a valid per-classifier calibration record; R2, R3 and all
-  judgment work always escalate. The report states the accepted-without-C3 count.
+- **Acceptance is now tiered and explicit.** A no-C3 acceptance requires an
+  attempt whose recorded tier is R0/R1, no risk-floor raise, a valid
+  per-classifier calibration record meeting owner-fixed floors, and every other
+  gate condition. R2, R3, any verdict job, and any tier raised by a semantic
+  signal always escalate. Acceptance is recorded per attempt, and the report
+  states the accepted-without-C3 count.
 - **Observation is normalized.** Every runtime's output is translated into one
   event protocol, so a new runtime adds an adapter rather than a branch in every
   consumer.
@@ -270,6 +278,44 @@ owner–contract map; it is an adapter note like any other.
 
 The skill name, the `/orchestrate` command, and the `--yes`, `--internal` and
 `--resume` arguments are unchanged.
+
+### From 2.0.0 to 2.0.1
+
+A patch release that closes two defects in the acceptance gate. No path changes
+and no interface changes. If you invoke `/orchestrate`, every change below only
+makes the gate stricter:
+
+- **A risk-floor raise now reaches the field the gate reads.** The semantic
+  router's adjustment is recorded as two separate deltas,
+  `capabilityFloorDelta` and `riskFloorDelta`. The recorded `riskTier` is
+  `max(tierDerivation, riskFloorDelta)`, and any attempt carrying a non-zero
+  `riskFloorDelta` always escalates to C3. Previously a raise could leave
+  `riskTier` reading R1 while `routing-policy.md` treated the job as R2, so the
+  acceptance gate read a weaker tier than the router acted on.
+- **Calibration can no longer be satisfied by an empty record.** The micro-arbiter
+  path requires at least 30 comparable C3-audited outcomes, measured agreement of
+  at least 0.95, a threshold of at least 0.90, and a record covering all three
+  signals. Those are policy constants owned by `verification.md`, so a job spec can
+  no longer set its own bar; a missing or lower `calibration.minimum_samples`
+  disables the no-C3 path instead of lowering it.
+- **Signal direction is explicit.** `artifact_matches_expected_output` and
+  `claims_supported_by_evidence` must be `>= threshold`;
+  `materially_unresolved` must be `< threshold`.
+- **Review verdicts always escalate.** `review`, and any job whose artifact is a
+  verdict on another job's work, escalated only by convention before; they are now
+  in the always-escalate list.
+- **Permission bypasses are never enabled.** The exception that permitted a bypass
+  with approval is removed. A job needing more privilege gets scoped permissions,
+  a stronger external boundary, or `blocked`.
+- **Review independence is binding.** With no different-family route, the verdict
+  is labeled `not-independent` and the job is blocked unless a fresh,
+  independently configured context substitutes.
+- **The decision plane may not authorize its own egress.** Sending prompts or
+  repository context to a provider requires a recorded user-authorization scope;
+  with none, the plane is disabled for the run.
+- **Acceptance is recorded per attempt.** `state.json` gains `attemptRecords[]` and
+  the job-level fields become aggregates, because calibration needs the
+  per-attempt pairing.
 
 ### From 1.4.x to 1.8.0
 
@@ -286,13 +332,17 @@ The skill name, the `/orchestrate` command, and the `--yes`, `--internal` and
 
 ## Maintaining the docs
 
-This repository ships no code, no `package.json` and no CI, so there is no
-committed linter: a doc-integrity script would be its first executable, would sit
-outside the published plugin payload, and would contradict the rule in
+This repository ships no code and no `package.json`, so there is no committed
+linter: a doc-integrity script would be its first executable, would sit outside
+the published plugin payload, and would contradict the rule in
 `dispatch-hardening.md` that bundled scripts resolve skill-relative rather than
 from the repo root. Containment here is therefore **normative, not mechanical** —
 and this section exists so that any maintainer can *re-run* it rather than trust
 it.
+
+The one workflow under `.github/workflows/` publishes `site/` to GitHub Pages. It
+runs no check and gates nothing: a documentation change is still verified by the
+sweep below, by a maintainer.
 
 Run the whole sweep before merging a change to this reference set. Every command
 below is copy-pasteable, and the controls in step 2 verify that the checks
@@ -315,10 +365,12 @@ grep -qE "\]\([^)]*references/pi-onboarding\.md\)" /tmp/valid.md && echo "CONTRO
 rm -f /tmp/stale.md /tmp/valid.md
 
 # 3. VERSION — exact surface counts, not merely "present".
-test "$(grep -c '2\.0\.0' plugins/orchestrate/.claude-plugin/plugin.json)" = 1 || echo "FAIL plugin.json"
-test "$(grep -c '2\.0\.0' plugins/orchestrate/skills/orchestrate/SKILL.md)" = 1 || echo "FAIL SKILL.md"
-test "$(grep -c '2\.0\.0' site/index.html)" = 3 || echo "FAIL site (byline, spec table, vi i18n byline)"
-grep -rn '1\.8\.0' plugins README.md site .claude-plugin --include='*.json' --include='*.md' --include='*.html' | grep -v 'README.md' && echo "FAIL stale version" || echo "version clean"
+test "$(grep -c '2\.0\.1' plugins/orchestrate/.claude-plugin/plugin.json)" = 1 || echo "FAIL plugin.json"
+test "$(grep -c '2\.0\.1' plugins/orchestrate/skills/orchestrate/SKILL.md)" = 1 || echo "FAIL SKILL.md"
+test "$(grep -c '2\.0\.1' site/index.html)" = 3 || echo "FAIL site (byline, spec table, vi i18n byline)"
+#    README.md is exempt: it keeps the historical 1.8.x -> 2.0.0 upgrade section.
+grep -rn '2\.0\.0' plugins site .claude-plugin --include='*.json' --include='*.md' --include='*.html' && echo "FAIL stale version" || echo "version clean"
+grep -rn '1\.8\.0' plugins site .claude-plugin --include='*.json' --include='*.md' --include='*.html' && echo "FAIL stale version" || echo "version clean"
 
 # 4. REACHABILITY — every reference and adapter note is linked by a peer,
 #    whether the link is bare or path-qualified. A file must not count itself.
@@ -329,18 +381,33 @@ for f in plugins/orchestrate/skills/orchestrate/references/*.md \
     plugins/orchestrate/skills/orchestrate README.md || echo "UNREACHABLE $b"
 done
 
-# 5. BOUNDARY — the accept predicate has exactly one owner.
-grep -rln 'accept without C3' plugins/orchestrate/skills/orchestrate/references
+# 5. BOUNDARY — the accept predicate has exactly one owner. The pattern is the
+#    canonical sentence that only verification.md is allowed to state.
+grep -rln 'Accept without a C3 call' plugins/orchestrate/skills/orchestrate/references
 #    Must print exactly: .../verification.md
 
-# 6. PARITY — reader-facing surfaces must not state a weaker R2 control.
-grep -n 'R2' README.md site/index.html plugins/orchestrate/skills/orchestrate/references/safety-policy.md
-#    Each R2 row must mention worktree, checks, and arbiter review.
+# 6. PARITY — reader-facing surfaces must not state a weaker control for ANY tier.
+#    These clauses must survive every summary, per tier.
+check() { grep -qF "$2" "$1" || echo "PARITY FAIL $1 missing: $2"; }
+for f in README.md site/index.html; do
+  check "$f" "no unnecessary write or shell grant"   # R0
+  check "$f" "no permission bypass"                  # R1
+  check "$f" "explicit checks and arbiter review"    # R2
+  check "$f" "strongest verified controls"           # R3
+done
+#    Must print nothing.
 
 # 7. STUBS — unverified adapters stay unmistakably non-normative.
 grep -L 'Status: unverified — not a support claim, not in inventory' \
   plugins/orchestrate/skills/orchestrate/runtimes/{claude,codex,gemini,opencode,aider}.md
 #    Must print nothing.
+
+# 8. SITE I18N — every data-i18n key in the markup has a Vietnamese entry, so a
+#    new section cannot ship as English-only. The control proves the check fails.
+for k in $(grep -o 'data-i18n="[^"]*"' site/index.html | cut -d'"' -f2 | sort -u); do
+  grep -qE "(^|[ ,{]) *$k:" site/index.html || echo "I18N FAIL no VI entry: $k"
+done
+grep -qE '(^|[ ,{]) *noSuchKey:' site/index.html && echo "CONTROL FAILED" || echo "control OK: absent key detected"
 ```
 
 **What these assertions do not do.** They prove that a sentence exists, a link
