@@ -643,8 +643,79 @@ test "$(grep -c '<svg' site/index.html)" -ge 1 || echo "FAIL: no inline svg"
 test "$(grep -c '@keyframes' site/index.html)" -ge 1 || echo "FAIL: no animation"
 grep -q 'aria-labelledby="flowCaption"' site/index.html || echo "FAIL: svg has no accessible name"
 test "$(grep -c 'data-i18n="flowCaption"' site/index.html)" = 1 || echo "FAIL: caption key count"
-grep -q '.flow .marker, .flow .pulse, .flow .node-label { animation: none; }' site/index.html \
-  || echo "FAIL: reduced-motion does not name the diagram"
+#     Both panels are compiler output, not hand-drawn: assert the emitter's hooks, and
+#     that its finite motion is preference-gated rather than merely present.
+test "$(grep -c 'class="ak-diagram-svg flow"' site/index.html)" = 2 || echo "FAIL: diagram panels"
+test "$(grep -cE '<svg[^>]*data-animation="trace"' site/index.html)" = 2 \
+  || echo "FAIL: finite motion"   # the attribute also opens a rule in the emitter's CSS
+grep -q 'prefers-reduced-motion: no-preference' site/index.html \
+  || echo "FAIL: diagram motion is not preference-gated"
+#     The embedded SVG carries its own guard, so it stays safe when lifted out of this
+#     page; this page's blanket rule alone would not survive that extraction.
+grep -q '.ak-diagram-svg \*, .ak-diagram-svg { animation: none !important; transition: none !important; }' \
+  site/index.html || echo "FAIL: no self-contained reduced-motion guard"
+#     Node families must be exactly the set the stylesheet re-clothes. A family the IR
+#     gains later renders in the compiler's own hue, which nothing else here sees.
+python3 - <<'PY2' || echo "FAIL: node family set"
+import re, pathlib, sys
+s = pathlib.Path("site/index.html").read_text(encoding="utf-8")
+i = s.index('<section id="flow"'); s = s[i:s.index('</section>', i)]
+have = set(re.findall(r'<g class="ak-node"[^>]*data-family="([^"]+)"', s))
+want = {"process", "service", "decision", "start", "success", "failure", "waiting"}
+if have - want:
+    print("UNMAPPED FAMILY", sorted(have - want)); sys.exit(1)
+if want - have:
+    print("MAPPED FAMILY UNUSED", sorted(want - have)); sys.exit(1)
+PY2
+#     The panels ship no edge labels on purpose: the compiler centres a label on its
+#     edge and emits node cards afterwards, so any label whose box meets a card is
+#     partly painted over — seven of twelve did. Assert the property that forced that
+#     choice rather than the choice itself, so adding a label back is checked.
+python3 - <<'PY3' || echo "FAIL: edge label occluded"
+import re, pathlib, sys
+s = pathlib.Path("site/index.html").read_text(encoding="utf-8")
+i = s.index('<section id="flow"'); sec = s[i:s.index('</section>', i)]
+bad = []
+for panel in sec.split('<svg class="ak-diagram-svg flow"')[1:]:
+    panel = panel[:panel.index('</svg>')]
+    rect = r'<rect class="ak-%s" x="([\d.]+)" y="([\d.]+)" width="([\d.]+)" height="([\d.]+)"'
+    cards = [tuple(map(float, m)) for m in re.findall(rect % 'node-card', panel)]
+    masks = [tuple(map(float, m)) for m in re.findall(rect % 'edge-label-mask', panel)]
+    for mx, my, mw, mh in masks:
+        for cx, cy, cw, ch in cards:
+            if mx < cx + cw and mx + mw > cx and my < cy + ch and my + mh > cy:
+                bad.append((mx, my))
+if bad:
+    print("OCCLUDED LABEL at", bad); sys.exit(1)
+PY3
+#     The declaration that hides an edge until it draws is only safe because the
+#     emitter puts it inside the no-preference block. Move it out and every reduced-
+#     motion reader gets a diagram with no edges at all — which no other check sees.
+python3 - <<'PY4' || echo "FAIL: edge-hiding rule is not preference-gated"
+import re, pathlib, sys
+s = pathlib.Path("site/index.html").read_text(encoding="utf-8")
+i = s.index('<section id="flow"'); sec = s[i:s.index('</section>', i)]
+def gated(text, needle):
+    for m in re.finditer(r'@media[^{]*prefers-reduced-motion:\s*no-preference[^{]*\{', text):
+        j = m.end(); depth = 1
+        while depth and j < len(text):
+            if text[j] == '{': depth += 1
+            elif text[j] == '}': depth -= 1
+            j += 1
+        if needle in text[m.end():j]:
+            return True
+    return False
+bad = []
+for n, panel in enumerate(sec.split('<svg class="ak-diagram-svg flow"')[1:]):
+    panel = panel[:panel.index('</svg>')]
+    #     Exactly one occurrence, and it is the gated one: a second copy outside the
+    #     block would hide edges for everyone, and losing it entirely is a change of
+    #     rendering behaviour worth a look.
+    if panel.count('stroke-dashoffset: 100') != 1 or not gated(panel, 'stroke-dashoffset: 100'):
+        bad.append((n, panel.count('stroke-dashoffset: 100')))
+if bad:
+    print("EDGE HIDING NOT PREFERENCE-GATED", bad); sys.exit(1)
+PY4
 nums=$(grep -o '<span class="sec-num">[0-9]*</span>' site/index.html | grep -o '[0-9]*')
 test "$(printf '%s\n' "$nums" | sort -u | wc -l)" = "$(printf '%s\n' "$nums" | wc -l)" \
   || echo "FAIL: duplicate sec-num"
