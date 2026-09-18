@@ -314,6 +314,8 @@ h2 {
 /* ---------- Tier tables ------------------------------------------------- */
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(22px, 4vw, 48px); }
 @media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }
+/* A sub-block sits inside an existing numbered section, so it carries rhythm only. */
+.sub-block { margin-top: clamp(30px, 4vw, 46px); }
 .tier-card { border: 1px solid var(--rule); background: var(--paper-2); padding: 24px; }
 .tier-card > h3 {
   font-family: var(--sans); font-size: 11px; font-weight: 800;
@@ -694,6 +696,21 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
       <code>runtimes/</code> is a note, not a support claim. Only a live probe recorded in
       <code>runtimes.json</code> makes a runtime selectable, and only a verified <code>available</code>
       state makes it eligible for routing.</p>
+
+      <div class="two-col sub-block">
+        <div class="tier-card">
+          <h3 data-i18n="jevTitle">Jev (TypeSafe), the reference model</h3>
+          <div class="tier"><code>01</code><span data-i18n="jevS1"><b>Typed decisions, not text.</b> Jev is <a href="https://typesafe.ai">TypeSafe</a>'s System One model: it answers a declared set of typed questions about a piece of state and returns a probability for each answer, so no generated text has to be parsed back into a policy field.</span></div>
+          <div class="tier"><code>02</code><span data-i18n="jevS2"><b>A distribution, not a verdict.</b> A choice comes back with the runner-up probabilities beside it, so the plane can return a low-confidence signal instead of a confident wrong answer — the case the escalation matrix exists to catch.</span></div>
+          <div class="tier"><code>03</code><span data-i18n="jevS3"><b>Reference, never a requirement.</b> The contract was written against Jev, and Jev is one optional provider behind it. With no eligible classifier, the plane is disabled and deterministic policy decides.</span></div>
+        </div>
+        <div class="tier-card">
+          <h3 data-i18n="jevKeyTitle">Configuring the key</h3>
+          <div class="tier"><code>01</code><span data-i18n="jevK1">The variable is <code>TYPESAFE_API_KEY</code>, created in TypeSafe's own console. It is read from the four locations documented in <code>decision-plane.md</code>, which owns the order.</span></div>
+          <div class="tier"><code>02</code><span data-i18n="jevK2">A key alone is not enough: a call also needs a recorded egress authorization naming the provider and the credential source. With no key, or no such authorization, the plane is disabled for the run — never silently re-routed.</span></div>
+          <div class="tier"><code>03</code><span data-i18n="jevK3">The value is never printed, prompted for or committed, and a shadowed source is reported. Nothing on this page, and nothing in a run, shows it.</span></div>
+        </div>
+      </div>
     </div>
   </section>
 
@@ -1347,6 +1364,14 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
     planeFloor: "Một <code>riskFloorDelta</code> làm thay đổi tầng được ghi nhận, thêm biện pháp kiểm soát, và luôn leo thang lên C3 — nên classifier chỉ có thể thu hẹp đường nhanh, không bao giờ mở rộng nó.",
     planeCal: "Đường không cần C3 yêu cầu 30 kết quả đã được C3 kiểm toán, mức đồng thuận đo được ít nhất 0.95 và ngưỡng ít nhất 0.90. Đây là hằng số chính sách, không phải đầu vào của job, nên một spec không thể tự đặt chuẩn cho mình. Khi chưa có bản ghi hợp lệ, lớp này chỉ quan sát và ghi log — không bao giờ quyết định.",
     planeAdapters: "Kỷ luật tương tự áp dụng cho runtime. Một tệp trong <code>runtimes/</code> chỉ là ghi chú, không phải tuyên bố hỗ trợ. Chỉ một lần dò trực tiếp được ghi vào <code>runtimes.json</code> mới khiến runtime có thể được chọn, và chỉ trạng thái <code>available</code> đã xác minh mới khiến nó đủ điều kiện nhận tuyến.",
+    jevTitle: "Jev (TypeSafe), mô hình tham chiếu",
+    jevS1: "<b>Quyết định có kiểu, không phải văn bản.</b> Jev là mô hình System One của <a href=\"https://typesafe.ai\">TypeSafe</a>: nó trả lời một tập câu hỏi có kiểu đã khai báo trước về một khối trạng thái và trả về một xác suất cho mỗi câu trả lời, nên không có văn bản sinh ra nào phải được phân tích ngược thành một trường chính sách.",
+    jevS2: "<b>Một phân phối, không phải một phán quyết.</b> Một lựa chọn trở về kèm xác suất của các phương án xếp sau, nên lớp này có thể trả về một tín hiệu độ tin cậy thấp thay vì một câu trả lời sai đầy tự tin — đúng trường hợp mà ma trận leo thang tồn tại để bắt.",
+    jevS3: "<b>Tham chiếu, không bao giờ là bắt buộc.</b> Hợp đồng được viết dựa trên Jev, và Jev là một provider tùy chọn phía sau nó. Không có classifier hợp lệ thì lớp này bị tắt và chính sách tất định quyết định.",
+    jevKeyTitle: "Cấu hình khoá",
+    jevK1: "Biến là <code>TYPESAFE_API_KEY</code>, được tạo trong console của TypeSafe. Nó được đọc từ bốn vị trí ghi trong <code>decision-plane.md</code>, tài liệu sở hữu thứ tự đọc.",
+    jevK2: "Chỉ có khoá là chưa đủ: một lượt gọi còn cần một egress authorization đã được ghi lại, nêu tên provider và nguồn thông tin xác thực. Thiếu khoá, hoặc thiếu uỷ quyền đó, thì lớp này bị tắt cho lượt chạy — không bao giờ bị định tuyến lại âm thầm.",
+    jevK3: "Giá trị không bao giờ bị in ra, hỏi người dùng hay commit, và một nguồn bị che khuất sẽ được báo cáo. Không gì trên trang này, và không gì trong một lượt chạy, hiển thị nó.",
 
     h2Safe: "Mặc định được thiết kế với giả định sẽ có sự cố",
     f1: "Cô lập bằng worktree",

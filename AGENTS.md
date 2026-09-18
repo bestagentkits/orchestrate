@@ -11,7 +11,7 @@ landing page.
 
 The only automation is `.github/workflows/pages.yml`, which publishes `site/` to
 GitHub Pages. There is no test CI. **A change here is verified by the maintenance
-sweep in `README.md`, not by a test suite.**
+sweep in `docs/maintaining-the-docs.md`, not by a test suite.**
 
 ## Which files are authoritative
 
@@ -52,8 +52,9 @@ other keys are AgentKit extensions, and a conforming harness ignores them.
 
 ## How to verify a change
 
-Run the numbered sweep in `README.md` under `## Maintaining the docs`. It is the
-verification mechanism, and its assertions are the contract's executable part.
+Run the numbered sweep in `docs/maintaining-the-docs.md`, **from the repository
+root**. It is the verification mechanism, and its assertions are the contract's
+executable part.
 
 Two disciplines make the sweep trustworthy, and both exist because their absence caused
 real defects here:
