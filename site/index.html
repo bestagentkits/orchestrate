@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Orchestrate — Multi-Runtime Agent Orchestration for Claude Code</title>
+<title>Orchestrate — Multi-Runtime Agent Orchestration for Coding-Agent Harnesses</title>
 <meta name="description" content="Orchestrate coordinates staged or parallel jobs across live-verified coding-agent runtimes and in-session subagents: capability- and risk-based routing, worktree isolation, resumable state, and independent arbiter review.">
 <style>
 /* ============================================================
@@ -380,6 +380,27 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
 .foot-links a:hover { border-color: var(--accent); color: var(--accent); }
 .colophon { font-family: var(--sans); font-size: 12px; color: var(--ink-faint); letter-spacing: .04em; }
 
+/* ---------- Animated pipeline diagram ----------------------------------- */
+.flow-figure { margin: 0; }
+.flow { width: 100%; height: auto; display: block; overflow: visible; }
+.flow .node { fill: var(--paper-2); stroke: var(--rule); stroke-width: 1; }
+.flow .node-label { fill: var(--ink-soft); font-family: var(--sans); font-size: 9px; font-weight: 600; text-anchor: middle; animation: flowLabel 7s ease-in-out infinite; }
+.flow .edge { stroke: var(--rule); fill: none; stroke-width: 1.2; }
+.flow .rail { stroke: var(--accent-2); fill: none; stroke-width: 1.2; stroke-dasharray: 4 3; }
+.flow .marker { fill: var(--accent); animation: flowTravel 7s linear infinite; }
+.flow .pulse { fill: var(--accent-2); animation: flowPulse 3.2s ease-in-out infinite; }
+.flow .terminal { fill: var(--paper-2); stroke: var(--accent); stroke-width: 1.4; }
+.flow-list { margin: 26px 0 0; padding-left: 20px; color: var(--ink-soft); font-size: 15px; }
+.flow-list li { margin-bottom: 6px; }
+
+@keyframes flowTravel { from { transform: translateX(70px); } to { transform: translateX(970px); } }
+@keyframes flowPulse { 0%, 100% { opacity: .25; } 50% { opacity: 1; } }
+@keyframes flowLabel { 0%, 100% { opacity: .58; } 50% { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .flow .marker, .flow .pulse, .flow .node-label { animation: none; }
+}
+
 [hidden] { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }
@@ -409,7 +430,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
 
   <!-- ============ HERO ============ -->
   <div class="hero wrap">
-    <p class="kicker" data-i18n="kicker">A Claude Code Skill · MIT Licensed</p>
+    <p class="kicker" data-i18n="kicker">An Agent Skills package · MIT Licensed</p>
 
     <h1 class="headline">Orchestrate<br><em data-i18n="headlineEm">the whole crew.</em></h1>
     <div class="headline-rule"></div>
@@ -423,10 +444,10 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
           call the work done until deterministic checks pass and — for anything above read-only or
           scoped-write work — an independent arbiter agrees.
         </p>
-        <p class="byline" data-i18n="byline">Skill · version 2.1.0 · maintained by bestagentkits</p>
+        <p class="byline" data-i18n="byline">Skill · version 2.2.0 · maintained by bestagentkits</p>
 
         <div class="cta-row">
-          <a class="btn btn-primary" href="#install" data-i18n="ctaInstall">Install the plugin →</a>
+          <a class="btn btn-primary" href="#install" data-i18n="ctaInstall">Install →</a>
           <a class="btn btn-ghost" href="https://github.com/bestagentkits/orchestrate" data-i18n="ctaSource">Read the source</a>
         </div>
       </div>
@@ -436,7 +457,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
         <dl>
           <dt data-i18n="specCmd">Command</dt><dd>/orchestrate</dd>
           <dt data-i18n="specKind">Kind</dt><dd data-i18n="specKindV">Skill · dev-tools</dd>
-          <dt data-i18n="specVer">Version</dt><dd>2.1.0</dd>
+          <dt data-i18n="specVer">Version</dt><dd>2.2.0</dd>
           <dt data-i18n="specLic">License</dt><dd>MIT</dd>
           <dt data-i18n="specIn">Input</dt><dd data-i18n="specInV">YAML · prose · --resume</dd>
           <dt data-i18n="specOut">Output</dt><dd data-i18n="specOutV">report.md + capture</dd>
@@ -742,11 +763,17 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
 ├── state.json         <span class="c-com"># attempts + acceptance</span>
 ├── metrics.jsonl      <span class="c-com"># per-attempt outcomes</span>
 ├── runtimes.json      <span class="c-com"># live probe evidence</span>
+├── decisions.jsonl    <span class="c-com"># decision traces</span>
+├── calibration.json   <span class="c-com"># arbiter calibration</span>
+├── trace.jsonl        <span class="c-com"># correlated record</span>
 ├── report.md          <span class="c-com"># the deliverable</span>
 ├── worktrees/
 │   └── &lt;job-id&gt;/      <span class="c-com"># isolated writes</span>
 ├── supervisor/
-│   └── &lt;run-id&gt;/      <span class="c-com"># events.jsonl, output logs</span>
+│   └── &lt;run-id&gt;/
+│       ├── events.jsonl <span class="c-com"># normalized journal</span>
+│       ├── graph.json   <span class="c-com"># private invocation</span>
+│       └── output-&lt;job-id&gt;.log <span class="c-com"># bounded, redacted</span>
 └── &lt;job-id&gt;/
     ├── command.txt     <span class="c-com"># redacted, CLI jobs</span>
     ├── stdout.txt      <span class="c-com"># bounded</span>
@@ -758,8 +785,91 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
     ├── artifacts/
     └── attempt-&lt;n&gt;/    <span class="c-com"># preserved failures</span></pre>
           </div>
+          <p class="fig-note" data-i18n="figOutNote">A summary of the normative run-directory tree in <code>output-layout.md</code>, which owns the layout.</p>
         </figure>
       </div>
+    </div>
+  </section>
+
+  <!-- ============ CAPABILITIES ============ -->
+  <section id="capabilities">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">07</span>
+        <h2 data-i18n="h2Cap">What this release adds</h2>
+        <p class="sec-deck" data-i18n="deckCap">Four behaviours, each with the bound that keeps it honest.</p>
+      </div>
+
+      <div class="two-col">
+        <div>
+          <h3 data-i18n="capBench">Benchmark-ranked routing</h3>
+          <p data-i18n="capBenchB">Routing ranks the candidates that already passed the hard filter, by measured success rate, cost per task and task duration at a given reasoning effort. Evidence is cached between runs. Benchmarks rank and never gate: they cannot set eligibility, a floor, a tier, a control or an approval.</p>
+        </div>
+        <div>
+          <h3 data-i18n="capPromote">Promotion and fail-safe</h3>
+          <p data-i18n="capPromoteB">A quota limit, an outage or a crash promotes the job to the next candidate, after the retry budget and honouring a declared order first, ending in a logged blocked state if none is left. A failed check never promotes, and neither does a permission stop.</p>
+        </div>
+        <div>
+          <h3 data-i18n="capTrace">Trace and logs</h3>
+          <p data-i18n="capTraceB">Every routing decision, promotion, gate outcome and verdict carries one correlation identity, and fetches are traced like decisions. The trace is redacted on write, excluded from exports unless reviewed, and a run whose trace is incomplete says so.</p>
+        </div>
+        <div>
+          <h3 data-i18n="capCred">Credentials</h3>
+          <p data-i18n="capCredB">The provider key is read from four documented locations in a fixed order, passed only through the inherited child environment, and never printed or prompted for. A missing key disables the decision plane rather than failing the run.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FLOW ============ -->
+  <section id="flow">
+    <div class="wrap">
+      <div class="sec-head">
+        <span class="sec-num">08</span>
+        <h2 data-i18n="h2Flow">How a job actually moves</h2>
+        <p class="sec-deck" data-i18n="deckFlow">These are the routing hops of the same pipeline listed above as stages, so the count differs from seven.</p>
+      </div>
+
+      <figure class="flow-figure">
+        <svg class="flow" role="img" aria-labelledby="flowCaption" viewBox="0 0 1040 320">
+          <path class="edge" d="M 70 96 L 970 96" />
+          <g><rect class="node" x="28" y="81" width="84" height="30" rx="6"/><text class="node-label" x="70" y="100">probe</text></g>
+          <g><rect class="node" x="128" y="81" width="84" height="30" rx="6"/><text class="node-label" x="170" y="100" style="animation-delay:-0.7s">fetch</text></g>
+          <g><rect class="node" x="228" y="81" width="84" height="30" rx="6"/><text class="node-label" x="270" y="100" style="animation-delay:-1.4s">filter</text></g>
+          <g><rect class="node" x="328" y="81" width="84" height="30" rx="6"/><text class="node-label" x="370" y="100" style="animation-delay:-2.1s">rank</text></g>
+          <g><rect class="node" x="428" y="81" width="84" height="30" rx="6"/><text class="node-label" x="470" y="100" style="animation-delay:-2.8s">route</text></g>
+          <g><rect class="node" x="528" y="81" width="84" height="30" rx="6"/><text class="node-label" x="570" y="100" style="animation-delay:-3.5s">gate</text></g>
+          <g><rect class="node" x="628" y="81" width="84" height="30" rx="6"/><text class="node-label" x="670" y="100" style="animation-delay:-4.2s">dispatch</text></g>
+          <g><rect class="node" x="728" y="81" width="84" height="30" rx="6"/><text class="node-label" x="770" y="100" style="animation-delay:-4.9s">observe</text></g>
+          <g><rect class="node" x="828" y="81" width="84" height="30" rx="6"/><text class="node-label" x="870" y="100" style="animation-delay:-5.6s">check</text></g>
+          <g><rect class="node" x="928" y="81" width="84" height="30" rx="6"/><text class="node-label" x="970" y="100" style="animation-delay:-6.3s">verdict</text></g>
+
+          <path class="rail" d="M 370 111 L 370 200 L 570 200 L 570 111" />
+          <g><rect class="node" x="404" y="186" width="132" height="28" rx="6"/><circle class="pulse" cx="422" cy="200" r="4"/><text class="node-label" x="482" y="204">decision plane</text></g>
+
+          <path class="rail" d="M 670 111 L 670 152 L 470 152 L 470 111" />
+          <text class="node-label" x="570" y="147">promote</text>
+
+          <path class="edge" d="M 670 152 L 940 152 L 940 186" />
+          <g><rect class="terminal" x="878" y="186" width="124" height="28" rx="6"/><text class="node-label" x="940" y="204">fail-safe</text></g>
+
+          <circle class="marker" cx="0" cy="96" r="4.5" />
+        </svg>
+        <figcaption id="flowCaption" data-i18n="flowCaption">The pipeline: probe, fetch, filter, rank, route, gate, dispatch, observe, check, verdict — with a decision-plane rail feeding rank and gate, a promotion loop, and a fail-safe terminal.</figcaption>
+      </figure>
+
+      <ol class="flow-list">
+        <li data-i18n="flowN1">Probe: live inventory of the runtimes on this machine.</li>
+        <li data-i18n="flowN2">Fetch: benchmark evidence for each surviving candidate and effort level.</li>
+        <li data-i18n="flowN3">Filter: eligibility, capability floors and risk floors.</li>
+        <li data-i18n="flowN4">Rank: order the survivors by measured outcome.</li>
+        <li data-i18n="flowN5">Route: select the runtime, model and reasoning effort.</li>
+        <li data-i18n="flowN6">Gate: tier, controls, approval and egress authority.</li>
+        <li data-i18n="flowN7">Dispatch: run the job in its isolated worktree.</li>
+        <li data-i18n="flowN8">Observe: capture events, output and settlement.</li>
+        <li data-i18n="flowN9">Check: deterministic verification of the work product.</li>
+        <li data-i18n="flowN10">Verdict: independent arbiter review where the tier requires it.</li>
+      </ol>
     </div>
   </section>
 
@@ -767,14 +877,21 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
   <section id="install">
     <div class="wrap">
       <div class="sec-head">
-        <span class="sec-num">07</span>
+        <span class="sec-num">09</span>
         <h2 data-i18n="h2Install">Install</h2>
-        <p class="sec-deck" data-i18n="deckInstall">Orchestrate ships as a Claude Code plugin from its own
-        marketplace. Add the marketplace, install the plugin, restart Claude Code.</p>
+        <p class="sec-deck" data-i18n="deckInstall">Orchestrate runs on any harness that has Agent Skills
+        installed. The primary path is the <code>npx skills</code> CLI; the Claude Code marketplace path
+        and the manual copy both still work.</p>
       </div>
 
       <div class="two-col">
         <div class="install-steps">
+          <div class="istep">
+            <div>
+              <h3 data-i18n="i0">Install with the skills CLI</h3>
+              <p data-i18n="i0b"><code>npx skills add bestagentkits/orchestrate</code> installs for the current project; add <code>-g</code> for a global install or <code>-a &lt;harness&gt;</code> for one named harness.</p>
+            </div>
+          </div>
           <div class="istep">
             <div>
               <h3 data-i18n="i1">Add the marketplace</h3>
@@ -833,7 +950,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
   <section>
     <div class="wrap">
       <div class="sec-head">
-        <span class="sec-num">08</span>
+        <span class="sec-num">10</span>
         <h2 data-i18n="h2Limits">What it is not</h2>
         <p class="sec-deck" data-i18n="deckLimits">Stated plainly, because an orchestrator that oversells its
         guarantees is worse than no orchestrator.</p>
@@ -865,7 +982,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
       <a href="https://github.com/bestagentkits/orchestrate/blob/main/plugins/orchestrate/skills/orchestrate/SKILL.md" data-i18n="fSkill">Skill contract</a>
       <a href="https://github.com/bestagentkits/orchestrate/blob/main/LICENSE">MIT</a>
     </div>
-    <p class="colophon" data-i18n="colophon">Set in Iowan Old Style &amp; system sans · Built for Claude Code · bestagentkits</p>
+    <p class="colophon" data-i18n="colophon">Set in Iowan Old Style &amp; system sans · Runs on any Agent Skills harness · bestagentkits</p>
   </div>
 </footer>
 
@@ -876,11 +993,11 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
   /* ---------- Vietnamese copy deck -------------------------------------- */
   var VI = {
     issue: "Số 1 · Điều phối tác tử · 2026",
-    kicker: "Một Claude Code Skill · Giấy phép MIT",
+    kicker: "Một gói Agent Skills · Giấy phép MIT",
     headlineEm: "cả đội tác tử.",
     standfirst: "Một điều phối viên. Nhiều tác tử. Orchestrate chia việc ra nhiều runtime coding-agent đã được xác minh trực tiếp và các subagent trong phiên — định tuyến từng tác vụ theo năng lực và rủi ro, cô lập các job ghi song song trong git worktree riêng, ghi lại mọi câu lệnh, và không tuyên bố hoàn thành cho tới khi các bài kiểm tra tất định đạt, và — với mọi việc vượt trên công việc chỉ đọc hoặc ghi có phạm vi — một trọng tài độc lập đồng ý.",
-    byline: "Skill · phiên bản 2.1.0 · duy trì bởi bestagentkits",
-    ctaInstall: "Cài đặt plugin →",
+    byline: "Skill · phiên bản 2.2.0 · duy trì bởi bestagentkits",
+    ctaInstall: "Cài đặt →",
     ctaSource: "Đọc mã nguồn",
     specTitle: "Thông số",
     specCmd: "Lệnh", specKind: "Loại", specKindV: "Skill · dev-tools",
@@ -957,9 +1074,35 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
     deckSpec: "Viết một lần rồi chạy lại nhiều lần. Yêu cầu dạng mô tả tự do cũng được xử lý y hệt — điều phối viên viết spec trước rồi mới dispatch. Các placeholder được xác định từ bằng chứng trực tiếp lúc chạy, không lấy từ trí nhớ.",
     figSpec: "jobs.yaml",
     figOut: "plans/reports/orchestrate-&lt;timestamp&gt;/",
+    figOutNote: "Bản tóm tắt cây thư mục chuẩn tắc trong <code>output-layout.md</code>, tệp sở hữu bố cục này.",
 
+    h2Cap: "Có gì mới trong bản này",
+    deckCap: "Bốn hành vi, mỗi cái kèm giới hạn giữ cho nó trung thực.",
+    capBench: "Định tuyến theo benchmark",
+    capBenchB: "Định tuyến xếp hạng các ứng viên đã vượt bộ lọc cứng, theo tỉ lệ thành công, chi phí mỗi tác vụ và thời lượng đo được ở một mức reasoning effort. Bằng chứng được cache giữa các lượt chạy. Benchmark chỉ xếp hạng, không bao giờ gác cổng: nó không đặt được điều kiện đủ, ngưỡng sàn, bậc rủi ro, kiểm soát hay phê duyệt.",
+    capPromote: "Promotion và fail-safe",
+    capPromoteB: "Hết quota, nhà cung cấp gián đoạn hay tiến trình sập sẽ đưa job sang ứng viên kế tiếp — sau khi hết ngân sách thử lại và ưu tiên thứ tự đã khai báo — và kết thúc ở trạng thái blocked có ghi log nếu không còn ứng viên. Bài kiểm tra thất bại không bao giờ promote, và lệnh dừng vì quyền cũng vậy.",
+    capTrace: "Trace và log",
+    capTraceB: "Mỗi quyết định định tuyến, mỗi promotion, mỗi kết quả gate và mỗi phán quyết đều mang một định danh tương quan, và các lần fetch cũng được trace như quyết định. Trace được che ngay khi ghi, bị loại khỏi bản xuất trừ khi đã rà soát, và một lượt chạy có trace không đầy đủ phải nói rõ điều đó.",
+    capCred: "Khoá API",
+    capCredB: "Khoá của provider được đọc từ bốn vị trí theo thứ tự cố định, truyền đi chỉ qua môi trường con kế thừa, và không bao giờ bị in ra hay hỏi người dùng. Thiếu khoá thì decision plane bị tắt, chứ không làm lượt chạy thất bại.",
+    h2Flow: "Một job thực sự di chuyển thế nào",
+    deckFlow: "Đây là các chặng định tuyến của chính pipeline mà phần trên liệt kê theo giai đoạn, nên số lượng khác bảy.",
+    flowCaption: "Pipeline: probe, fetch, filter, rank, route, gate, dispatch, observe, check, verdict — kèm nhánh decision plane nuôi rank và gate, một vòng promotion, và một nút fail-safe.",
+    flowN1: "Probe: kiểm kê trực tiếp các runtime trên máy này.",
+    flowN2: "Fetch: bằng chứng benchmark cho từng ứng viên còn lại và từng mức effort.",
+    flowN3: "Filter: điều kiện đủ, ngưỡng sàn năng lực và ngưỡng sàn rủi ro.",
+    flowN4: "Rank: xếp hạng các ứng viên còn lại theo kết quả đo được.",
+    flowN5: "Route: chọn runtime, model và mức reasoning effort.",
+    flowN6: "Gate: bậc rủi ro, kiểm soát, phê duyệt và thẩm quyền ra mạng.",
+    flowN7: "Dispatch: chạy job trong worktree cách ly của nó.",
+    flowN8: "Observe: ghi lại sự kiện, đầu ra và trạng thái kết thúc.",
+    flowN9: "Check: kiểm tra tất định trên kết quả công việc.",
+    flowN10: "Verdict: trọng tài độc lập rà soát khi bậc rủi ro yêu cầu.",
     h2Install: "Cài đặt",
-    deckInstall: "Orchestrate được phát hành dưới dạng plugin Claude Code từ marketplace riêng. Thêm marketplace, cài plugin, khởi động lại Claude Code.",
+    deckInstall: "Orchestrate chạy trên mọi harness đã cài Agent Skills. Đường cài chính là CLI <code>npx skills</code>; đường Claude Code marketplace và đường chép skill thủ công vẫn nguyên vẹn và vẫn được hỗ trợ.",
+    i0: "Cài bằng CLI skills",
+    i0b: "<code>npx skills add bestagentkits/orchestrate</code> cài cho dự án hiện tại; thêm <code>-g</code> để cài toàn cục hoặc <code>-a &lt;harness&gt;</code> cho một harness cụ thể.",
     i1: "Thêm marketplace",
     i1b: "Trỏ Claude Code tới repository này một lần duy nhất.",
     i2: "Cài plugin",
@@ -977,7 +1120,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
     l4: "<strong>Không phải danh mục ổn định.</strong> Lệnh CLI, model, xác thực và hành vi an toàn liên tục thay đổi. Mỗi lượt chạy đều xác minh lại từ đầu — và đó chính là điểm mấu chốt.",
 
     fSkill: "Hợp đồng skill",
-    colophon: "Chữ Iowan Old Style &amp; sans hệ thống · Dựng cho Claude Code · bestagentkits"
+    colophon: "Chữ Iowan Old Style &amp; sans hệ thống · Chạy trên mọi harness Agent Skills · bestagentkits"
   };
 
   /* Snapshot the English copy straight from the DOM on first load. */

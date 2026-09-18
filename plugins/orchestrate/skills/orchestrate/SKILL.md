@@ -9,7 +9,7 @@ argument-hint: "<job-spec.yaml | task description | --resume <run-dir>> [--yes] 
 license: MIT
 metadata:
   author: bestagentkits
-  version: "2.1.0"
+  version: "2.2.0"
 ---
 
 # Orchestrate
@@ -17,14 +17,19 @@ metadata:
 Coordinate headless coding-agent jobs, agent sessions and in-session subagents
 through a staged, captured, resumable workflow. The skill owns routing and
 judgment; the coordinator owns deterministic plan state, process supervision and
-observable evidence. No service or dashboard is required.
+observable evidence. No service or dashboard is required. This skill targets any
+harness that implements the Agent Skills contract;
+[harness-portability.md](references/harness-portability.md) owns the conformance
+surface, the harness features this skill may never depend on, and the install paths.
 
 **Engine.** The coordinator path is canonical: it owns the run directory
 described in [job-spec.md](references/job-spec.md), and nothing in this skill
 requires the AgentKit CLI. When that CLI is installed, `ak orchestrate` is an
 equivalent accelerator for the same contract — it must produce the same
 run-directory state, so a run started one way can be resumed the other, and no
-step depends on it being present.
+step depends on it being present. The engine is the coordinator path, and no
+harness CLI is required: the harness is the thing that loads this skill, while
+the coordinator owns the run.
 
 Runtime and model catalogs drift. Resolve every route from live evidence; never
 treat a runtime, provider, model, flag, or agent seen in this file or an older
@@ -58,11 +63,17 @@ Keep durable facts in one place. Every contract below has exactly one owner.
 
 **Runtime layer**
 
+- [harness-portability.md](references/harness-portability.md): the Agent Skills
+  conformance surface, the three harness features this skill may never depend on,
+  and every install and discovery path.
 - [runtime-adapter-contract.md](references/runtime-adapter-contract.md): the
   adapter interface, conformance, command construction, OS revalidation.
 - [runtime-profile.md](references/runtime-profile.md): live candidate discovery
   including the classifier role, probing, `runtimes.json`, support states,
   timeouts, and the annotation-only auto-profiler.
+- [benchmark-evidence.md](references/benchmark-evidence.md): measured **outcome**
+  evidence — success rate, cost per task and duration per reasoning effort — plus
+  its sources, its durable cache, and the limits on what it may decide.
 - [event-protocol.md](references/event-protocol.md): the normalized event
   envelope, event kinds, cursor semantics, the agent state machine, and the
   redaction and provenance rules.
@@ -79,6 +90,11 @@ Keep durable facts in one place. Every contract below has exactly one owner.
 - [routing-policy.md](references/routing-policy.md): the **sole route-selection
   authority** — the deterministic hard filter, capability tiers C1–C3, task
   floors, the floor-raising rule, ranking, fallbacks and reasoning controls.
+- [fallback-policy.md](references/fallback-policy.md): the promotion chain, its
+  triggers and budget, the per-concern control comparison, and the terminal
+  fail-safe.
+- [trace-and-logging.md](references/trace-and-logging.md): span identifiers, the
+  correlation rule, retention and export.
 - [decision-plane.md](references/decision-plane.md): the **sole System-1
   authority** — provider sourcing, call and input rules, the six decision tasks,
   the decision trace, and the authority the plane does not have.
@@ -216,8 +232,9 @@ brief in this file; the authority is that file.
   scoped permission with explicit approval, a stronger external boundary, or it is
   blocked. The rule and its reasoning are owned by
   [safety-policy.md](references/safety-policy.md). Onboarding installs are visible
-  and reversible; profile overwrites are snapshotted first; credentials are
-  entered only by the user.
+  and reversible; profile overwrites are snapshotted first. The coordinator never
+  types, copies or stores a credential: it is read from a documented location, or
+  the capability that needs it is disabled.
 - Start with read-only or scoped-write behavior. Parallel writers use separate
   worktrees and disjoint ownership, and failed output is preserved for diagnosis
   rather than hidden or relabeled.
@@ -417,6 +434,7 @@ End with:
 - Arbiter: pass|fail|blocked
 - Accepted without C3: <n> of <total> (R0/R1 only)
 - Decision plane: enabled(<candidate>)|disabled|degraded(<reason>)
+- Credentials: `credentialSource`=<env|project-env|skills-env|skill-env|absent> `credentialTrust`=<process|working-tree> `credential-shadowed`=<none|the ignored source>
 - Checks: <commands or none>
 
 Unresolved questions:

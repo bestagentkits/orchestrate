@@ -1,7 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "orchestrate",
-  "description": "Multi-runtime agent orchestration for Claude Code — capability- and risk-based routing, worktree isolation, resumable state, and independent arbiter review.",
+  "description": "Multi-runtime agent orchestration for any coding-agent harness — capability- and risk-based routing, worktree isolation, resumable state, and independent arbiter review.",
   "owner": {
     "name": "bestagentkits"
   },

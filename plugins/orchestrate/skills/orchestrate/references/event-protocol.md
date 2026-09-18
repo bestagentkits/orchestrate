@@ -40,6 +40,8 @@ One event per line in `<run-dir>/supervisor/<supervisor-run-id>/events.jsonl`.
   "runId": "orchestrate-20260917-1230",
   "jobId": "implement-auth",
   "attempt": 1,
+  "spanId": "<span-id>",
+  "parentSpanId": "<span-id-or-null>",
   "runtime": "pi",
   "provider": "<resolved-or-null>",
   "model": "<resolved-or-null>",
@@ -58,6 +60,7 @@ One event per line in `<run-dir>/supervisor/<supervisor-run-id>/events.jsonl`.
 | `seq` | Monotonic within one supervisor run; the resume cursor |
 | `ts` | Observation time, not the runtime's claimed time |
 | `runId`, `jobId`, `attempt` | Identity; an attempt distinguishes retries |
+| `spanId`, `parentSpanId` | The operation inside one attempt and its parent |
 | `runtime` | Adapter id that produced the event |
 | `provider`, `model`, `family` | Resolved when exposed; `null` when unknown, never guessed |
 | `kind` | One of the event kinds below |
@@ -70,6 +73,10 @@ One event per line in `<run-dir>/supervisor/<supervisor-run-id>/events.jsonl`.
 `model` and `family` are recorded separately from the requested route. A
 requested flag or executable name does not attest which model performed the work;
 unknown stays `null`.
+
+This file remains the **single authority** for the event kinds and the cursor
+semantics. [trace-and-logging.md](trace-and-logging.md) owns the span's correlation
+rule; this file owns the fields. `attempt` keeps its name and its type.
 
 ## Event kinds
 

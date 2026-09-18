@@ -56,6 +56,11 @@ checks, and answers the arbiter questions below.
 
 ## Escalation matrix
 
+A **promoted attempt** is a new attempt and is evaluated from scratch: nothing carries
+over from the attempt it replaced. A second content failure on a promoted attempt
+escalates to C3 rather than triggering another promotion, so promotion can never become
+a search for a passing answer. See [fallback-policy.md](fallback-policy.md).
+
 Accept without a C3 call only when **all** hold:
 
 1. the **attempt's recorded** risk tier is `R0` or `R1`, **and** no risk-floor
@@ -293,5 +298,5 @@ grep -n 'verdict on another job' $S/verification.md
 grep -n 'weaker control for \*\*any\*\* tier' $S/verification.md
 grep -c '^| [0-9] ' $S/verification.md   # nine arbiter questions
 # boundary: the accept predicate must not appear in the plane's own doc
-grep -n 'accept without C3' $S/decision-plane.md && echo "FAIL: leaked" || echo "boundary clean"
+grep -ni 'accept without a c3 call' $S/decision-plane.md && echo "FAIL: leaked" || echo "boundary clean"
 ```

@@ -28,6 +28,10 @@ Job-level values are aggregates and are never the calibration source:
 | `c3Verdict` | the C3 outcome when a C3 call occurred |
 | `c3EscalationReason` | which escalation clause fired |
 | `laterOutcome` | whether an accepted attempt later failed, and how |
+| `model` | the model resolved for **this attempt**, so a promoted attempt does not overwrite its predecessor's value |
+| `effortLevel` | the normalized reasoning-effort level the attempt ran at |
+| `effortRaw` | the vendor's own effort parameter, verbatim |
+| `benchmarkRef` | the benchmark record key that ranked this attempt, or null when ranking was degraded |
 
 Because the record is per attempt, an attempt accepted on the micro-arbiter path
 and later contradicted by a C3 verdict on a retry remains pair able. A job-level
@@ -37,6 +41,14 @@ calibration.
 This telemetry is the **only** legitimate source of micro-arbiter calibration,
 and it is only usable as ground truth for samples that received a C3 audit. See
 the calibration rules in [verification.md](verification.md).
+
+Each record carries `runId`, `jobId` and `attempt`, so a metric is joinable to the
+attempt that produced it. The correlation rule itself is owned by
+[trace-and-logging.md](trace-and-logging.md).
+
+This run's recorded outcomes for a comparable task class are the **highest-authority**
+benchmark evidence, above any fetched leaderboard. The authority order is owned by
+[benchmark-evidence.md](benchmark-evidence.md); this document owns the fields.
 
 Two derived figures matter:
 

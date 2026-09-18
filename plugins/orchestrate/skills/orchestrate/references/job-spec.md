@@ -26,6 +26,10 @@ defaults:
   effect: observe
   approval: inherit
   capture: true
+  benchmark:
+    cacheTTLHours: <integer>        # default 168 (CACHE_TTL_DEFAULT_HOURS); above 720 (CACHE_TTL_MAX_HOURS) is rejected
+  fallback:
+    maxPromotions: <integer>        # default 2 (MAX_PROMOTIONS_DEFAULT); above 4 (MAX_PROMOTIONS_MAX) is rejected
 calibration:
   minimum_samples: <integer>        # owner-fixed policy floor; a value below 30 is rejected
 jobs:
@@ -36,6 +40,7 @@ jobs:
     task: scout | architecture | implement | review | audit | security | test | docs | mechanical
     importance: normal | high
     model: string
+    effort: minimal | low | medium | high | xhigh | max   # optional; absent means the router chooses by outcome
     cwd: string
     prompt: string
     skill: string
@@ -69,6 +74,9 @@ jobs:
       max_attempts: 1
       backoff: 5s
       classes: [<retryable-class>]
+    # Retry runs first for the same runtime, bounded by max_attempts; a promotion
+    # happens only after that budget is exhausted. The combined dispatch ceiling for
+    # one job is (1 + maxPromotions) x max(1, max_attempts).
     max_output_bytes: 1048576
 ```
 
@@ -90,7 +98,14 @@ Every job includes:
 - `expected_output`;
 - `model` or a routable `task`;
 - `calibration.minimum_samples`, at or above the owner-fixed policy floor of 30,
-  whenever the run may use the no-C3 acceptance path.
+  whenever the run may use the no-C3 acceptance path;
+- `benchmark.cacheTTLHours` is **optional**: an absent value uses
+  `CACHE_TTL_DEFAULT_HOURS`, and a value above `CACHE_TTL_MAX_HOURS` is rejected
+  rather than clamped. Both constants are owned by
+  [benchmark-evidence.md](benchmark-evidence.md);
+- `effort` is optional, and when present must be one of the normalized ladder
+  values. An explicit `effort` is a constraint the router honors; an absent one
+  lets the router choose by measured outcome.
 
 When `model` is present it is an explicit constraint, not proof of availability.
 The live inventory gate still applies. Internal model selection is allowed only
@@ -128,6 +143,19 @@ Before stage construction:
     owner-fixed policy floor of 30 whenever the run may use the no-C3 path. A
     missing or lower value does **not** lower the bar: it disables
     acceptance-without-C3 for the run, and C3 remains mandatory.
+12. Validate harness identity on the run-level record: a run that cannot identify
+    the harness that loaded the skill records `harness: unknown` and must not
+    claim any harness-specific feature. This field names the harness, never a
+    runtime — the conformance surface and the degradation rules are owned by
+    [harness-portability.md](harness-portability.md).
+13. Reject a `benchmark.cacheTTLHours` above the owner-fixed maximum
+    `CACHE_TTL_MAX_HOURS`. A rejected value **fails validation**; it is never
+    clamped to the maximum.
+14. Reject an `effort` outside the normalized ladder. A rejected value **fails
+    validation**; it is never snapped to the nearest level.
+15. Reject a `fallback.maxPromotions` above the owner-fixed maximum
+    `MAX_PROMOTIONS_MAX`. A rejected value **fails validation**; it is never
+    clamped to the maximum.
 
 Unknown flags, models, or controls fail validation. Re-read live help or current
 official documentation; never guess a replacement.
@@ -141,7 +169,11 @@ official documentation; never guess a replacement.
 - Default is one attempt. An explicit bounded retry policy permits only named
   failure classes after confirmed settlement and unchanged owned/input state.
   External/destructive effects and uncertain writers never retry automatically.
-- Fallback selection reruns the full capability and risk gate for that runtime.
+- Fallback selection reruns the full capability and risk gate for that runtime: what
+  **re-runs** is availability and the per-concern control check, while what does **not**
+  change is the job's tier, its approvals and its egress authority. A successor that
+  would need a new approval, a wider write boundary, an enabled bypass or a new egress
+  authority is a different job requiring a new gate decision, not a fallback.
 - Every state transition is atomically persisted before the next dispatch.
 
 ## Preparation, State And Resume
@@ -153,6 +185,7 @@ and written atomically before the next dispatch:
 {
   "runId": "<run-id>",
   "specPath": "jobs.yaml",
+  "harness": "unknown",
   "jobs": {
     "<job-id>": {
       "status": "queued|running|success|failed|blocked|interrupted",
@@ -166,6 +199,12 @@ and written atomically before the next dispatch:
       "attemptRecords": [
         {
           "attempt": 1,
+          "model": "<resolved-model-or-null>",
+          "effortLevel": "minimal|low|medium|high|xhigh|max|null",
+          "effortRaw": "<vendor-effort-parameter-or-null>",
+          "benchmarkRef": "<benchmark-record-key-or-null>",
+          "promotionOf": "<attempt-ordinal-or-null>",
+          "promotionTrigger": "<trigger-or-null>",
           "status": "queued|running|success|failed|blocked|interrupted",
           "startedAt": "<timestamp-or-null>",
           "endedAt": null,
@@ -192,6 +231,17 @@ the count of attempts accepted without a C3 call. A job-level field that
 collapses several attempts never overrides an attempt record. This is what lets
 calibration pair an accepted attempt with the C3 verdict that later contradicted
 it, per [metrics-and-self-improvement.md](metrics-and-self-improvement.md).
+
+The per-attempt `model`, `effortLevel`, `effortRaw` and `benchmarkRef` fields are
+read by [metrics-and-self-improvement.md](metrics-and-self-improvement.md) for
+per-attempt calibration and by [verification.md](verification.md) for the accept
+record. They stay attempt-scoped and are never aggregated to the job level.
+
+The attempt ordinal is the **join key** for `metrics.jsonl`, the trace and the events,
+so no consumer may key on a timestamp. Spans are **not** stored here: the attempt record
+is the durable unit and records the ordinal plus the promotion fields, while span detail
+stays in the trace owned by [trace-and-logging.md](trace-and-logging.md). A reader should
+not expect spans in both places.
 
 `riskTier` on an attempt is the **recorded** tier the escalation matrix reads. It
 is computed by the coordinator, never authored by a classifier, as the maximum of
