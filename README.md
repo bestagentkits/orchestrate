@@ -688,6 +688,34 @@ for panel in sec.split('<svg class="ak-diagram-svg flow"')[1:]:
 if bad:
     print("OCCLUDED LABEL at", bad); sys.exit(1)
 PY3
+#     The declaration that hides an edge until it draws is only safe because the
+#     emitter puts it inside the no-preference block. Move it out and every reduced-
+#     motion reader gets a diagram with no edges at all — which no other check sees.
+python3 - <<'PY4' || echo "FAIL: edge-hiding rule is not preference-gated"
+import re, pathlib, sys
+s = pathlib.Path("site/index.html").read_text(encoding="utf-8")
+i = s.index('<section id="flow"'); sec = s[i:s.index('</section>', i)]
+def gated(text, needle):
+    for m in re.finditer(r'@media[^{]*prefers-reduced-motion:\s*no-preference[^{]*\{', text):
+        j = m.end(); depth = 1
+        while depth and j < len(text):
+            if text[j] == '{': depth += 1
+            elif text[j] == '}': depth -= 1
+            j += 1
+        if needle in text[m.end():j]:
+            return True
+    return False
+bad = []
+for n, panel in enumerate(sec.split('<svg class="ak-diagram-svg flow"')[1:]):
+    panel = panel[:panel.index('</svg>')]
+    #     Exactly one occurrence, and it is the gated one: a second copy outside the
+    #     block would hide edges for everyone, and losing it entirely is a change of
+    #     rendering behaviour worth a look.
+    if panel.count('stroke-dashoffset: 100') != 1 or not gated(panel, 'stroke-dashoffset: 100'):
+        bad.append((n, panel.count('stroke-dashoffset: 100')))
+if bad:
+    print("EDGE HIDING NOT PREFERENCE-GATED", bad); sys.exit(1)
+PY4
 nums=$(grep -o '<span class="sec-num">[0-9]*</span>' site/index.html | grep -o '[0-9]*')
 test "$(printf '%s\n' "$nums" | sort -u | wc -l)" = "$(printf '%s\n' "$nums" | wc -l)" \
   || echo "FAIL: duplicate sec-num"
