@@ -15,14 +15,14 @@ isolated in git worktrees, fully captured, resumable, and blocked from
 declaring success until deterministic checks pass and, for anything above
 read-only or scoped-write work, an independent arbiter agrees.
 
-[**Live site →**](https://sites.agentwiki.cc/s/rDUlzFFGwTCGPT0jo59FB/) ·
+[**Live site →**](https://bestagentkits.github.io/orchestrate/) ·
 [Skill contract](plugins/orchestrate/skills/orchestrate/SKILL.md) ·
 [Install](#install) ·
 [MIT](LICENSE)
 
 </div>
 
-[![Orchestrate](assets/hero-light.png)](https://sites.agentwiki.cc/s/rDUlzFFGwTCGPT0jo59FB/)
+[![Orchestrate](assets/hero-light.png)](https://bestagentkits.github.io/orchestrate/)
 
 ---
 
