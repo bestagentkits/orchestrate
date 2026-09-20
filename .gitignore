@@ -20,3 +20,7 @@ plans/reports/
 .claude/
 .pi/
 skills-lock.json
+
+# Python bytecode from the benchmark tooling
+__pycache__/
+*.pyc

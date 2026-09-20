@@ -1,0 +1,10 @@
+{
+  "include": ["tools"],
+  "exclude": ["plans/**", "site/**", "plugins/**"],
+  "executionEnvironments": [
+    { "root": ".", "extraPaths": ["."] }
+  ],
+  "pythonVersion": "3.13",
+  "typeCheckingMode": "basic",
+  "reportMissingImports": "warning"
+}
