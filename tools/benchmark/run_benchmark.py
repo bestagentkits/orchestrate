@@ -19,6 +19,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import shutil
@@ -31,6 +32,7 @@ from collections import Counter
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(os.path.dirname(HERE))
 
+from tools.benchmark import trial_schema
 from tools.benchmark.measure import as_float, as_int
 from tools.benchmark.task_catalog import GRADER_MODULE, TASKS
 
@@ -203,6 +205,9 @@ def session_file_stats(path: str) -> dict:
     cost = 0.0
     tokens: Counter = Counter()
     models: Counter = Counter()
+    model_costs: dict[str, float] = {}
+    token_fields_seen: set[str] = set()
+    current_model = None
     for line in read_text(path).splitlines():
         line = line.strip()
         if not line:
@@ -212,17 +217,29 @@ def session_file_stats(path: str) -> dict:
         except json.JSONDecodeError:
             continue
         if record.get("type") == "model_change":
-            models[f"{record.get('provider')}/{record.get('modelId')}"] += 1
+            current_model = f"{record.get('provider')}/{record.get('modelId')}"
+            models[current_model] += 1
         message = record.get("message")
         if not isinstance(message, dict):
             continue
         usage = message.get("usage")
         if not isinstance(usage, dict):
             continue
-        cost += as_float((usage.get("cost") or {}).get("total"))
+        message_cost = as_float((usage.get("cost") or {}).get("total"))
+        cost += message_cost
+        key = current_model or "unknown"
+        model_costs[key] = model_costs.get(key, 0.0) + message_cost
         for field in ("input", "output", "cacheRead", "cacheWrite", "reasoning"):
+            if field in usage:
+                token_fields_seen.add(field)
             tokens[field] += as_int(usage.get(field))
-    return {"costUsd": cost, "tokens": dict(tokens), "models": dict(models)}
+    return {
+        "costUsd": cost,
+        "tokens": dict(tokens),
+        "models": dict(models),
+        "modelCosts": dict(model_costs),
+        "tokenFieldsSeen": sorted(token_fields_seen),
+    }
 
 
 def session_files(session_dir: str) -> dict[str, dict]:
@@ -265,6 +282,8 @@ def combine(stats: dict[str, dict], paths: list) -> dict:
     cost = 0.0
     tokens: Counter = Counter()
     models: Counter = Counter()
+    model_costs: dict[str, float] = {}
+    token_fields_seen: set[str] = set()
     for path in paths:
         entry = stats[path]
         cost += entry["costUsd"]
@@ -272,10 +291,15 @@ def combine(stats: dict[str, dict], paths: list) -> dict:
             tokens[field] += value
         for model, count in entry["models"].items():
             models[model] += count
+        for model, value in (entry.get("modelCosts") or {}).items():
+            model_costs[model] = model_costs.get(model, 0.0) + value
+        token_fields_seen.update(entry.get("tokenFieldsSeen") or [])
     return {
         "costUsd": cost,
         "tokens": dict(tokens),
         "models": dict(models),
+        "modelCosts": dict(model_costs),
+        "tokenFieldsSeen": sorted(token_fields_seen),
         "sessionFiles": len(paths),
     }
 
@@ -393,6 +417,7 @@ def main(argv: list[str]) -> int:
     # disk. Re-running the whole suite would re-spend on work already done, so
     # `--resume` skips tuples already present and seeds the budget counter from
     # the sessions already under the run directory, which keeps the cap honest.
+    runtime_name, runtime_version = runtime_identity(real_pi)
     resume_done: set = set()
     if args.resume and os.path.exists(results_path):
         for line in read_text(results_path).splitlines():
@@ -485,6 +510,7 @@ def main(argv: list[str]) -> int:
                     stdout_tail = stderr_tail = ""
                 duration = time.monotonic() - started
 
+                settlement = settle_session_dir(session_dir)
                 stats_after = session_files(session_dir)
                 fresh_sessions = [path for path in stats_after if path not in stats_before]
                 escaped = escaped_session_files(workspace)
@@ -514,11 +540,47 @@ def main(argv: list[str]) -> int:
                         "escapedSessionPaths": escaped,
                         "escapedSessionFiles": len(escaped),
                         "dispatches": dispatches,
+                        "settled": settlement["settled"],
+                        "settleWaitedSeconds": settlement["waitedSeconds"],
                         "graderOutputTail": grader_output[-1500:],
                         "stdoutTail": stdout_tail[-1500:],
                         "stderrTail": stderr_tail[-800:],
                         "workspace": workspace,
                     }
+                )
+                gate = read_trace_payload(workspace, "gate")
+                route_decision = read_trace_payload(workspace, "route")
+                resolved = dominant_model(trial_stats["models"]) or ""
+                resolved_provider, _, resolved_model = resolved.partition("/")
+                append_trial_record(
+                    out_dir,
+                    trial_schema.build_trial_record(
+                        {
+                            "variant": variant,
+                            "taskId": task["id"],
+                            "cohort": task["cohort"],
+                            "type": task["type"],
+                            "trial": trial,
+                            "status": status,
+                            "success": bool(passed),
+                            "durationSeconds": round(duration, 3),
+                            "requestedProvider": PROVIDER,
+                            "requestedModel": MODEL,
+                            "requestedEffort": None,
+                            "resolvedProvider": resolved_provider or None,
+                            "resolvedModel": resolved_model or None,
+                            "resolvedEffort": (route_decision or {}).get("selectedEffortMode"),
+                            "failureClass": "infrastructure" if status == "timeout" else None,
+                            "deterministicVerificationResult": "pass" if passed else "fail",
+                        },
+                        trial_capabilities(trial_stats, runtime_version, gate),
+                        model_costs=trial_stats.get("modelCosts") or {},
+                        roles=read_role_assignments(workspace),
+                        route_decision=route_decision,
+                        evidence_scope=(route_decision or {}).get("evidenceCohort"),
+                        runtime_name=runtime_name,
+                    ),
+                    name,
                 )
                 append_result(results_path, record)
                 completed += 1
@@ -533,6 +595,211 @@ def main(argv: list[str]) -> int:
     write_text(os.path.join(out_dir, "summary.json"), json.dumps(summary, indent=2) + "\n")
     print(f"total spent ${spent:.4f} of cap ${args.cap_usd:.2f}")
     return 0
+
+
+TRIALS_FILE = "trials.jsonl"
+
+#: Where the skill may leave a decision trace, in the order it writes them.
+TRACE_CANDIDATES = (
+    "trace.jsonl",
+    os.path.join(".orchestrate", "trace.jsonl"),
+    "decisions.jsonl",
+    os.path.join(".orchestrate", "decisions.jsonl"),
+)
+
+#: The roles a resolved model can hold in the component cost split.
+ROLES = ("coordinator", "worker", "classifier", "arbiter")
+
+
+def settle_session_dir(
+    session_dir: str,
+    quiet_checks: int = 3,
+    poll_seconds: float = 1.0,
+    timeout_seconds: float = 120.0,
+) -> dict:
+    """Wait until the session directory stops changing, then report the settled state.
+
+    A dispatched ``pi`` session can outlive the trial that started it: the parent process
+    exits while the child is still appending to its own session file. Snapshotting
+    immediately attributes that cost to no trial, which understates whichever arm dispatched
+    more. So the directory is polled until its file count and total cost hold still for
+    ``quiet_checks`` consecutive reads, bounded by ``timeout_seconds``.
+    """
+    deadline = time.monotonic() + timeout_seconds
+    stable = 0
+    previous = None
+    waited = 0.0
+    while time.monotonic() < deadline:
+        snapshot = session_files(session_dir)
+        signature = (len(snapshot), round(combine(snapshot, list(snapshot))["costUsd"], 6))
+        if signature == previous:
+            stable += 1
+            if stable >= quiet_checks:
+                return {"settled": True, "waitedSeconds": round(waited, 3), "files": len(snapshot)}
+        else:
+            stable = 0
+            previous = signature
+        time.sleep(poll_seconds)
+        waited += poll_seconds
+    return {"settled": False, "waitedSeconds": round(waited, 3), "files": len(session_files(session_dir))}
+
+
+def runtime_identity(real_pi: str) -> tuple[str, str | None]:
+    """The runtime's own reported version, or ``None`` when it reports none."""
+    try:
+        finished = subprocess.run(
+            [real_pi, "--version"], capture_output=True, text=True, timeout=60
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return "pi", None
+    text = ((finished.stdout or "") + (finished.stderr or "")).strip()
+    if not text:
+        return "pi", None
+    return "pi", text.splitlines()[0].strip() or None
+
+
+def _collect_roles(node, assignments: dict) -> None:
+    """Collect model-to-role assignments from any nesting of the run's runtime record."""
+    if isinstance(node, dict):
+        role = node.get("role")
+        model = node.get("model") or node.get("modelId")
+        if isinstance(role, str) and role in ROLES and isinstance(model, str) and model:
+            provider = node.get("provider")
+            key = f"{provider}/{model}" if isinstance(provider, str) and provider else model
+            assignments[key] = role
+        for value in node.values():
+            _collect_roles(value, assignments)
+    elif isinstance(node, list):
+        for value in node:
+            _collect_roles(value, assignments)
+
+
+def read_role_assignments(workspace: str) -> dict:
+    """Model-to-role assignments the run recorded, empty when it recorded none.
+
+    A shape this reader does not recognise yields no assignments rather than an exception, and
+    an unassigned model is a worker downstream, so an unexpected file can understate a role
+    but never invent one.
+    """
+    for name in ("runtimes.json", os.path.join(".orchestrate", "runtimes.json")):
+        path = os.path.join(workspace, name)
+        if not os.path.exists(path):
+            continue
+        try:
+            data = json.loads(read_text(path))
+        except (json.JSONDecodeError, OSError):
+            return {}
+        assignments: dict = {}
+        _collect_roles(data, assignments)
+        return assignments
+    return {}
+
+
+def read_trace_payload(workspace: str, kind: str) -> dict | None:
+    """The last record of ``kind`` the run left behind, or ``None``.
+
+    Absence is a real answer: a trial where the skill settled nothing to disk has no route
+    record, and reporting that as missing is more useful than inventing one.
+    """
+    found = None
+    for name in TRACE_CANDIDATES:
+        path = os.path.join(workspace, name)
+        if not os.path.exists(path):
+            continue
+        for line in read_text(path).splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if entry.get("kind") == kind and isinstance(entry.get("payload"), dict):
+                found = entry["payload"]
+    return found
+
+
+def dominant_model(models: dict) -> str | None:
+    """The model that produced the most activity in this trial."""
+    if not models:
+        return None
+    return max(models.items(), key=lambda item: item[1])[0]
+
+
+def _token_capability(stats: dict, field: str) -> dict:
+    """A token count is exposed only when the provider actually reported the field."""
+    if field in set(stats.get("tokenFieldsSeen") or []):
+        return trial_schema.capability(trial_schema.EXPOSED, as_int(stats["tokens"].get(field)))
+    return trial_schema.capability(trial_schema.NOT_EXPOSED)
+
+
+def trial_capabilities(stats: dict, runtime_version: str | None, gate: dict | None) -> dict:
+    """The capability entries for one trial, each labelled with how it was obtained."""
+    models = sorted(stats.get("models") or {})
+    digest = hashlib.sha256("\n".join(models).encode("utf-8")).hexdigest() if models else None
+    resolved = dominant_model(stats.get("models") or {})
+    model_id = resolved.split("/")[-1] if resolved else None
+    gate = gate if isinstance(gate, dict) else {}
+    tier = gate.get("tier")
+    escalated = gate.get("escalated")
+    reason = gate.get("escalationClause")
+    c3_observed = isinstance(tier, str)
+    return {
+        "cacheReadTokens": _token_capability(stats, "cacheRead"),
+        "cacheWriteTokens": _token_capability(stats, "cacheWrite"),
+        "reasoningTokens": _token_capability(stats, "reasoning"),
+        "actualMarginalCostUsd": trial_schema.capability(
+            trial_schema.EXPOSED, round(stats["costUsd"], 6)
+        ),
+        "apiEquivalentCostUsd": trial_schema.capability(trial_schema.NOT_MEASURED),
+        "quotaBurn": trial_schema.capability(trial_schema.NOT_MEASURED),
+        "rateLimitRemaining": trial_schema.capability(trial_schema.NOT_MEASURED),
+        "modelFamily": trial_schema.derive_model_family(model_id),
+        "catalogHash": (
+            trial_schema.capability(
+                trial_schema.DERIVED, digest,
+                basis="sha256 over the resolved models observed in this trial")
+            if digest else trial_schema.capability(trial_schema.NOT_MEASURED)
+        ),
+        "runtimeVersion": (
+            trial_schema.capability(trial_schema.EXPOSED, runtime_version)
+            if runtime_version else trial_schema.capability(trial_schema.NOT_EXPOSED)
+        ),
+        "retries": trial_schema.capability(trial_schema.NOT_MEASURED),
+        "promotions": trial_schema.capability(trial_schema.NOT_MEASURED),
+        "c3Required": (
+            trial_schema.capability(trial_schema.EXPOSED, tier == "C3")
+            if c3_observed else trial_schema.capability(trial_schema.NOT_MEASURED)
+        ),
+        "c3Reason": (
+            trial_schema.capability(trial_schema.EXPOSED, str(reason))
+            if c3_observed and bool(escalated) and reason
+            else trial_schema.capability(trial_schema.NOT_EXPOSED)
+            if c3_observed
+            else trial_schema.capability(trial_schema.NOT_MEASURED)
+        ),
+    }
+
+
+def append_trial_record(out_dir: str, record: dict, label: str) -> None:
+    """Append a full-schema trial record, reporting rather than hiding a schema problem.
+
+    The record is written even when it does not validate, because a trial with a schema defect
+    is evidence too, and dropping it would make the run look cleaner than it was.
+    """
+    problems = trial_schema.validate_trial_record(record)
+    path = os.path.join(out_dir, TRIALS_FILE)
+    try:
+        with open(path, "a", encoding="utf-8") as handle:
+            handle.write(json.dumps(record) + "\n")
+            handle.flush()
+    except OSError as exc:
+        raise SystemExit(f"cannot append {TRIALS_FILE}: {exc}") from exc
+    if problems:
+        print(
+            f"trial-schema: {label} recorded with {len(problems)} problem(s): {problems[:6]}",
+            flush=True,
+        )
 
 
 def count_log_lines(log_path: str) -> int:

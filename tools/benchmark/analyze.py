@@ -19,7 +19,11 @@ import statistics
 import sys
 from collections import Counter, defaultdict
 
-from tools.benchmark.measure import as_float, as_int
+# Resolved at runtime: this module runs as `python3 -m tools.benchmark.analyze`, so the
+# repository root is on sys.path and the sibling package is importable. A checker invoked
+# without the repository root reports it as unresolvable, which is a configuration artifact
+# rather than a defect; `python3 -c "from tools.benchmark.analyze import *"` resolves it.
+from tools.benchmark.measure import as_float, as_int  # pyright: ignore[reportMissingImports]
 
 USAGE = "usage: python3 -m tools.benchmark.analyze <out-directory>"
 
