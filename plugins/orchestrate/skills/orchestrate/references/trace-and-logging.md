@@ -79,13 +79,48 @@ promise, so four kinds are enumerated here:
 
 | `kind` | Closed payload fields |
 |---|---|
-| `route` | `candidateCount`, `eligibleCount`, `rankedCount`, `benchmarkRef`, `benchmarkDegraded`, `capabilityFloorDelta`, `riskFloorDelta`, `riskTier`, `effortLevel` |
+| `route` | the full route payload, enumerated below. It is the hardest schema here because it is the record a reader audits to see why a route won. |
 | `promote` | `promotionOf`, `promotionTrigger`, `fromRuntime`, `toRuntime`, `budgetUsed`, `budgetMax` |
 | `gate` | `tier`, `controlsChecked`, `approvalsRequired`, `escalated`, `escalationClause` |
 | `fail_safe` | `reason`, `triggers`, `candidatesTried`, `benchmarkDegraded`, `terminal` |
 
 Every field is an enum, a number or a reference. **No free-text model, runtime or error
 prose is stored**, because free text is where a secret or a hostile string would enter.
+
+### The route payload
+
+A `route` record must explain the whole decision on its own, so its field set is larger than
+the others and is enumerated here. Every string field is a **bounded token** or a reference,
+never a sentence, and the fields whose vocabulary has an owner draw from that owner's closed
+set rather than from a set invented here.
+
+| Group | Fields | Kind |
+|---|---|---|
+| Counts | `candidateCount`, `eligibleCount`, `rankedCount`, `hardGateSurvivors`, `hardGateRejects`, `hardGateRejectReasons`, `prunedCount`, `evidenceSampleSize` | integer, or bounded tokens for the reason list |
+| Pruning | `pruneReasons` | bounded tokens from [routing-policy.md](routing-policy.md) |
+| Evidence | `evidenceCohort`, `evidenceDegradation` | bounded tokens; degradation from [benchmark-evidence.md](benchmark-evidence.md) |
+| Quality | `qualityBound`, `qualityEstimator` | number or `null`; the estimator is named by [benchmark-evidence.md](benchmark-evidence.md) |
+| Cost dimensions | `actualMarginalCostUsd`, `apiEquivalentCostUsd`, `quotaBurn`, `costDimensionUsed` | number or `null`; the dimension vocabulary is owned by [metrics-and-self-improvement.md](metrics-and-self-improvement.md) |
+| Reliability | `infrastructureFailureProbability`, `recoveryCostEvidenceClass` | number or `null`; the feeding class is owned by [metrics-and-self-improvement.md](metrics-and-self-improvement.md) |
+| Expected cost | `expectedRecoveryCostUsd`, `expectedC3CostUsd`, `expectedVerifiedCostUsd` | number or `null`, per [routing-policy.md](routing-policy.md) |
+| Selected route | `selectedRuntime`, `selectedProvider`, `selectedModel`, `selectedFamily`, `selectedEffortMode`, `effortLevel` | bounded tokens; the identity is the one [benchmark-evidence.md](benchmark-evidence.md) defines |
+| Runner-up | `runnerUpRuntime`, `runnerUpProvider`, `runnerUpModel`, `runnerUpEffortMode`, `runnerUpMargin` | bounded tokens, and a number or `null` for the margin |
+| Semantic router | `semanticRouterCalled`, `semanticRouterReason`, `semanticRouterSkippedReason` | boolean and bounded tokens from [routing-policy.md](routing-policy.md) |
+| Ranking | `benchmarkRef`, `benchmarkDegraded`, `capabilityFloorDelta`, `riskFloorDelta`, `riskTier` | a reference, bounded tokens and numbers or `null` |
+
+Three rules make this auditable rather than merely present:
+
+- **An unmeasured term is `null`, never `0`.** A cost dimension the provider does not expose
+  is recorded as `null` beside the capability metadata saying it was unavailable; writing `0`
+  would claim a measurement that was never taken. See
+  [metrics-and-self-improvement.md](metrics-and-self-improvement.md).
+- **A reason is an enum, not prose.** `pruneReasons`, `semanticRouterReason`,
+  `semanticRouterSkippedReason` and `hardGateRejectReasons` carry values from their owning
+  document's closed set. A classifier's own wording is never stored: the classifier returns
+  typed answers rather than text, and those answers are translated into these enums before
+  they reach the trace.
+- **The payload is closed in both directions.** A missing field and an added field are both
+  violations, so completeness is asserted rather than hoped for.
 
 ## Joining the existing artifacts
 
@@ -111,6 +146,20 @@ Per-artifact field schemas stay with their owners and are not restated here.
 - Whether the attempt was a retry or a promotion, and what triggered it.
 - What the verdict was, and from which route.
 - What the terminal status was.
+
+The route payload carries the routing half of that answerability, so these are answerable from
+it directly:
+
+- Which candidates survived the hard gates, which were rejected and under which gate, and
+  which were pruned and under which reason or protection.
+- Which evidence cohort and sample size ranked the choice, what quality bound came from it,
+  and what degradation was recorded when broader evidence had to be used.
+- Which cost dimensions were measured, which were `null`, and which dimension the budget
+  declared.
+- What the expected recovery, escalation and C3 costs were, and what the resulting expected
+  verified cost was.
+- Which effort mode was actually selected, what the runner-up was, and by what margin it lost.
+- Whether the semantic router was called, and when it was not, which skip reason applied.
 
 A run whose trace cannot answer these is **incomplete**, and the report must say so
 rather than implying a complete audit trail.

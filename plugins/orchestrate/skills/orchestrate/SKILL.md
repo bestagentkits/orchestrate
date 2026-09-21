@@ -72,8 +72,10 @@ Keep durable facts in one place. Every contract below has exactly one owner.
   including the classifier role, probing, `runtimes.json`, support states,
   timeouts, and the annotation-only auto-profiler.
 - [benchmark-evidence.md](references/benchmark-evidence.md): measured **outcome**
-  evidence — success rate, cost per task and duration per reasoning effort — plus
-  its sources, its durable cache, and the limits on what it may decide.
+  evidence — the route identity a record is keyed on, the sample-size-aware quality
+  bound, the cohort-scoped evidence hierarchy and its recorded degradation, cost per
+  task and duration per reasoning effort — plus its sources, its durable cache, and the
+  limits on what it may decide.
 - [event-protocol.md](references/event-protocol.md): the normalized event
   envelope, event kinds, cursor semantics, the agent state machine, and the
   redaction and provenance rules.
@@ -88,16 +90,19 @@ Keep durable facts in one place. Every contract below has exactly one owner.
   risk tiers R0–R3 and their minimum controls, approval and authority, isolation
   boundaries, secret handling, and the decisions no automated signal may make.
 - [routing-policy.md](references/routing-policy.md): the **sole route-selection
-  authority** — the deterministic hard filter, capability tiers C1–C3, task
-  floors, the floor-raising rule, ranking, fallbacks and reasoning controls.
+  authority** — the expected-verified-cost objective, the deterministic hard filter,
+  capability tiers C1–C3, task floors and verification strength, deterministic Pareto
+  pruning and its protections, the value-of-information gate, ranking, fallbacks and
+  reasoning controls.
 - [fallback-policy.md](references/fallback-policy.md): the promotion chain, its
   triggers and budget, the per-concern control comparison, and the terminal
   fail-safe.
 - [trace-and-logging.md](references/trace-and-logging.md): span identifiers, the
-  correlation rule, retention and export.
+  correlation rule, the closed `route` payload a decision must be explainable from,
+  retention and export.
 - [decision-plane.md](references/decision-plane.md): the **sole System-1
-  authority** — provider sourcing, call and input rules, the six decision tasks,
-  the decision trace, and the authority the plane does not have.
+  authority** — provider sourcing, call and input rules, when a call is worth making,
+  the six decision tasks, the decision trace, and the authority the plane does not have.
 
 **Execution layer**
 
@@ -110,7 +115,8 @@ Keep durable facts in one place. Every contract below has exactly one owner.
 - [observation.md](references/observation.md): observation, watchdog handoff,
   intervention, diagnosis and evidence-based improvement.
 - [verification.md](references/verification.md): the three verification layers,
-  the **escalation matrix**, calibration, and the arbiter contract.
+  the **escalation matrix**, when a structurally mandatory escalation goes straight to
+  C3, calibration with its durability and invalidation rules, and the arbiter contract.
 - [graph-optimizer.md](references/graph-optimizer.md): graph reduction, the merge
   algebra, and every refusal condition.
 

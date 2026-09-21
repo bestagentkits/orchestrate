@@ -25,17 +25,33 @@ A record that is missing any signal, or that carries a value outside its bound, 
 **malformed** and is treated as no record. A malformed record is never averaged,
 interpolated, or partially used.
 
-## The record key
+## The route identity
 
-The key is the triple `(provider, model, effortLevel)`.
+A record is keyed by the **execution identity** of the route it measured:
+
+```text
+(runtime, provider, model, family, effortMode)
+```
+
+Identity is what the provider actually executes, not the label a request used. The
+remaining fields are descriptive attributes of that identity: they are recorded, but
+they do not divide it.
 
 ```json
 {
+  "runtime": "<adapter-id>",
   "provider": "<provider-id>",
   "model": "<resolved-model-id>",
+  "family": "<model-family-or-unknown>",
+  "effortMode": "<the real execution mode this route resolves to>",
   "effortLevel": "minimal|low|medium|high|xhigh|max",
   "effortRaw": "<the vendor's own parameter, verbatim>",
+  "effortAliases": ["<other labels or raw values resolving to this same effortMode>"],
   "effortClass": "<provider-family-or-unmapped>",
+  "cohort": "<task-class-or-cohort-scope>",
+  "accountingMode": "<which cost dimension this record's cost signal carries>",
+  "capabilityEvidence": "<reference to what established the tier>",
+  "controlEvidence": "<reference to what established the controls>",
   "successRate": 0.0,
   "costPerTaskUsd": 0.0,
   "durationSeconds": 0,
@@ -48,6 +64,96 @@ The key is the triple `(provider, model, effortLevel)`.
   "confidence": "high|low"
 }
 ```
+
+### What divides a candidate, and what does not
+
+- **One real mode is one candidate.** When two normalized labels, or two raw values,
+  resolve to the same `effortMode`, they are **aliases of a single candidate**, not two.
+  The aliases are listed in `effortAliases` so the collapse is auditable rather than
+  silent. Measuring or routing such a pair as distinct counts the same route twice, and
+  a duplicated candidate corrupts every later comparison drawn from the records.
+- **One label is not one candidate.** When a single normalized label resolves to
+  different real `effortMode` values — because a vendor's ladder is not the normalized
+  ladder — they are **distinct candidates** and are measured separately. `effortLevel` is
+  this document's vocabulary for comparison; it never decides identity.
+- A route whose real mode cannot be established is **not comparable** and is ranked only
+  within its own provider, per the `effortClass: unmapped` rule below.
+- `runtime` is part of the identity because two adapters can reach the same provider
+  through different command construction, controls and capture. Only the **family** is
+  claimed across them: [routing-policy.md](routing-policy.md) compares resolved model
+  families, and [internal-routing.md](internal-routing.md) forbids inferring a different
+  family from a different executable.
+- The requested-versus-resolved split for model and effort is owned by
+  [event-protocol.md](event-protocol.md); this record carries the **resolved** values.
+- The cost dimension vocabulary named by `accountingMode` is owned by
+  [metrics-and-self-improvement.md](metrics-and-self-improvement.md). This record states
+  which dimension it carries and never assumes one.
+- `capabilityEvidence` and `controlEvidence` hold **references** to the evidence, never
+  the evidence itself and never a claim. Capability and controls are established
+  elsewhere: the live inventory by [runtime-profile.md](runtime-profile.md), the tier and
+  the risk controls by [safety-policy.md](safety-policy.md) and
+  [routing-policy.md](routing-policy.md).
+- `cohort` names the task class or cohort scope the record's outcome was measured over;
+  the evidence hierarchy that consumes it is defined below.
+- `sampleSize` and `retrievedAt` are part of the identity's **evidence quality**, not its
+  identity: the same route may hold several records that differ only in scope, sample and
+  freshness, and the tighter and fresher one outranks the other.
+
+## Quality uncertainty
+
+Raw `successRate` is **not** the ranking statistic. Three successes from three attempts
+and three hundred from three hundred and twenty do not rank 100% against 93.75%: the
+first is almost entirely unknown, and treating it as better is how a lucky small sample
+becomes a routing decision.
+
+The ranking statistic is a **conservative lower bound**:
+
+```text
+qualityLowerBound = wilson_lower_bound(successes, sampleSize, QUALITY_CONFIDENCE_Z)
+```
+
+| Constant | Value | Meaning |
+| --- | --- | --- |
+| `QUALITY_CONFIDENCE_Z` | `1.96` | Normal quantile for a 95% one-sided lower bound. |
+| `QUALITY_ESTIMATOR` | `wilson-lower-bound` | The estimator's identity, recorded so a bound can be reproduced rather than trusted. |
+
+The binding rules:
+
+- The estimator is **deterministic**: the same evidence yields the same bound, so two
+  runs cannot rank one corpus differently.
+- It is **sample-size aware**: the bound sits strictly below the raw rate and converges
+  upward as the sample grows.
+- `successes`, `sampleSize`, `rawSuccessRate`, `qualityLowerBound` and the estimator's
+  identity are **all recorded**, so a later reader recomputes rather than believes.
+- The bound is **ranking evidence only**. It may not set or change eligibility, a floor,
+  a tier, a control or an approval, and it may never restore a hard-filtered candidate —
+  the list under "What benchmark evidence may not do" governs it unchanged.
+- A record with no `sampleSize` is not ranked on a bound at all; it degrades to the
+  no-record path.
+- External benchmarks remain priors. A comparable local run outranks them, per the
+  authority order below.
+
+## Evidence hierarchy
+
+A route is not one global score. Ranking evidence is resolved by scope, most comparable
+first:
+
+```text
+exact comparable cohort
+  -> task class
+  -> broader / global route evidence
+  -> no record
+```
+
+The binding rules:
+
+- The resolver records **which level supplied** the ranking evidence.
+- Falling back to a broader level is recorded explicitly as a **degradation**, naming the
+  level used, so a report cannot present class-level or global evidence as though it had
+  been measured on the job's own cohort.
+- Falling all the way to `no record` degrades the ordering and never blocks it.
+- Evidence from a broader level is **never averaged into** a narrower one, and no narrower
+  record is invented when the comparable record does not exist.
 
 ## Reasoning-effort normalization
 
@@ -95,7 +201,7 @@ looks authoritative is worse than no figure.
 
 ### The join rule
 
-The record key is `(provider, model, effortLevel)`, and a source names a model in its
+The record key is the execution identity above, and a source names a model in its
 own vocabulary. So the mapping from a source's model name to the runtime's resolved
 model id is **explicit and per source**, and it is recorded in the record as
 `sourceModelLabel`.

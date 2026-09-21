@@ -97,8 +97,9 @@ Every job includes:
 - `timeout` or `defaults.timeout`;
 - `expected_output`;
 - `model` or a routable `task`;
-- `calibration.minimum_samples`, at or above the owner-fixed policy floor of 30,
-  whenever the run may use the no-C3 acceptance path;
+- `calibration.minimum_samples`, at or above the policy floor of 30 whose value is
+owned by [verification.md](verification.md), whenever the run may use the no-C3
+  acceptance path;
 - `benchmark.cacheTTLHours` is **optional**: an absent value uses
   `CACHE_TTL_DEFAULT_HOURS`, and a value above `CACHE_TTL_MAX_HOURS` is rejected
   rather than clamped. Both constants are owned by
@@ -270,11 +271,12 @@ ground truth. `decisionTraceRef` points at the enumerated trace in
 `decisions.jsonl` described by [decision-plane.md](decision-plane.md) and
 [output-layout.md](output-layout.md).
 
-`calibration.minimum_samples` is the **owner-fixed** floor for micro-arbiter
+`calibration.minimum_samples` is the floor for micro-arbiter
 calibration: the number of comparable C3-audited outcomes a per-classifier record
-must contain before the no-C3 path may be used at all. It is a run-policy field,
-set here and nowhere else, and it is independent of any record. Its value must be
-at least the owner-fixed policy floor of 30; a lower value is rejected by
+must contain before the no-C3 path may be used at all. This is a run-policy field,
+and its **value** is owner-fixed by [verification.md](verification.md) rather than
+by this file; it is independent of any record. Its value must be
+at least the policy floor of 30; a lower value is rejected by
 validation, and a missing value disables the no-C3 path. A calibration record
 whose own `minimum` field does not equal this value is invalid, which is what
 stops a record from validating itself. The calibration rules that consume it —

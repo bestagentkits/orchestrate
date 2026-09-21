@@ -29,15 +29,16 @@ is a closed enum, a number, or a reference; **no free-text classifier output is
 stored**. The file is excluded from diagnostic exports unless reviewed, matching
 the private-invocation rule, because a trace references job inputs.
 
-`calibration.json` holds the per-classifier record: the sample count, its
-`minimum` (which must equal the owner-fixed `calibration.minimum_samples` in
-[job-spec.md](job-spec.md)), the `threshold` (at or above the owner-fixed
-`INITIAL_THRESHOLD`), the `signals` covered (which must be the full declared set,
-so a harmful signal cannot be left unmeasured), the measured `agreement` (at or
-above `AGREEMENT_FLOOR`), and the expiry. The constants and the complete validity
-rule are owned by [verification.md](verification.md). A missing, malformed,
-pooled-across-classifiers, below-floor, incomplete-signal or expired record fails
-closed.
+`calibration.json` is the per-classifier calibration record. Its fields, the constants it
+is measured against, and the complete validity rule are owned by
+[verification.md](verification.md); this file records where the artifact lives and does not
+restate the rule.
+
+A **durable** calibration record lives outside every run directory, at
+`.orchestrate/calibration.json` relative to the project root, and is ignored by git. It is
+not part of the run-directory tree above: it exists so a later run can reuse a record that
+still satisfies the validity rule, and reuse always re-checks that rule against the current
+classifier identity rather than trusting the file's presence.
 
 Both artifacts are bounded and redacted on write, like every other capture
 surface. Neither is an input to routing eligibility.

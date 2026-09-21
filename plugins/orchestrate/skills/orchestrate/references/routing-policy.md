@@ -119,6 +119,161 @@ that keeps a probabilistic classifier from reducing rigor:
 The unconditional independence rules are owned by
 [safety-policy.md](safety-policy.md) and cannot be relaxed from this file.
 
+## Task quality floor
+
+Capability tiers say what class of work a route may do. They do not say how good a route
+must be at it. The **quality floor** says that, and it is derived from the job rather than
+from the provider:
+
+| Job property | Effect on the floor |
+| --- | --- |
+| Verification strength | Strong deterministic verification **lowers** it; weak verification **raises** it |
+| `importance: high` | Raises it |
+| Judgment work — architecture, review, audit, security, arbiter | Raises it to the top band |
+| Risk tier and effect | Raises it with the tier |
+
+| Constant | Value | Meaning |
+| --- | --- | --- |
+| `QUALITY_FLOOR_STRONG_VERIFICATION` | `0.50` | Floor when a wrong answer is caught deterministically |
+| `QUALITY_FLOOR_WEAK_VERIFICATION` | `0.85` | Floor when the outcome is judged rather than checked |
+| `QUALITY_FLOOR_JUDGMENT` | `0.90` | Floor for judgment work, and for `importance: high` |
+
+The selection rule:
+
+> Choose the **cheapest** route whose conservative quality estimate clears the required
+> quality floor, rather than the globally strongest available route.
+
+The binding rules:
+
+- The quality floor operates **after** capability eligibility. It never replaces, lowers
+  or restates a C1/C2/C3 capability floor, and it never replaces the risk floor.
+- The estimate it compares is the conservative lower bound owned by
+  [benchmark-evidence.md](benchmark-evidence.md), never a raw success rate.
+- A route whose quality evidence does not exist cannot clear a floor by default. Where the
+  floor cannot be evaluated, the no-record degradation applies and the ordering falls back
+  to the pre-existing deterministic order.
+- A higher floor can only be satisfied by better evidence or a stronger route. Nothing
+  here authorizes a route the hard filter removed.
+
+## Verification strength
+
+Verification strength is an explicit routing input, because a route whose output will be
+checked cheaply and deterministically does not have to be chosen as though it would not be.
+
+- **Strong deterministic verification** — hidden, unit or integration tests, deterministic
+  schema validation, reproducible compile or type checks, exact output comparison — may
+  justify preferring a **cheaper** route.
+- **Weak verification** — architecture, subjective synthesis, review, audit, security
+  judgment, public-contract decisions — requires stronger outcome evidence.
+
+This is a **ranking** rule inside the candidates that already satisfy the required tier. It
+must never silently lower C2 to C1 or C3 to C2: verification strength changes which eligible
+route wins, never which routes are eligible.
+
+Failures that verification strength cannot reach are handled where they belong: escalation
+by [verification.md](verification.md), promotion by [fallback-policy.md](fallback-policy.md).
+
+## Pareto pruning
+
+Before any semantic routing, candidates that are strictly dominated are removed
+deterministically, so a model call is never spent discovering that one route is
+simultaneously more expensive, slower, and no better by the available evidence.
+
+A candidate is **dominated** when another candidate is **no worse on every comparable
+dimension** and **materially better on at least one**. The dimensions are the ones this
+policy ranks on: quality lower bound, expected verified cost, latency, reliability, and
+expected recovery cost.
+
+| Constant | Value | Meaning |
+| --- | --- | --- |
+| `PARETO_TOLERANCE` | `0.05` | Relative difference below which two values are treated as equal, so measurement noise never prunes a candidate |
+
+The binding rules:
+
+- Pruning is **deterministic** and **comparable**: a candidate is compared only with
+  candidates whose evidence is comparable — the same cohort scope and the same accounting
+  mode. Evidence that is not comparable cannot establish dominance.
+- A candidate is **never pruned** when it is needed for an explicit user pin, C3
+  independence, stronger controls, fallback resilience, non-comparable evidence, or a
+  different accounting constraint.
+- A **missing dimension prevents** pruning rather than permitting it. An unknown value is
+  not a value, so dominance cannot be established on it.
+- Pruning affects **ranking only**. It never removes a candidate from eligibility and never
+  satisfies a floor: by construction a pruned candidate was already eligible, and a pruned
+  candidate is never one the hard filter removed.
+- Every prune decision is recorded in the structured trace with the dominating candidate
+  and the dimensions on which it won, and every protection is recorded with its reason.
+  The trace fields themselves are owned by [trace-and-logging.md](trace-and-logging.md).
+
+## Deterministic ambiguity gate
+
+The semantic router is called only when its answer can change a permitted decision. This
+rule is deterministic, and it lives here rather than in the classifier.
+
+| Constant | Value | Meaning |
+| --- | --- | --- |
+| `SEMANTIC_MARGIN_THRESHOLD` | `0.15` | Relative objective margin above which the deterministic winner cannot be overturned by a semantic signal |
+
+Call the semantic router when **any** of these hold:
+
+- the top candidates are materially close — the relative objective margin between the best
+  and the runner-up is below `SEMANTIC_MARGIN_THRESHOLD`;
+- the task classification is ambiguous;
+- a semantic signal could validly **raise** a floor or add a required constraint, which is
+  possible whenever the required tier is below C3, the risk tier is below R3, or
+  independence is not already required;
+- requirements — context, session, sandbox, independence — are not clear from deterministic
+  evidence.
+
+Otherwise **skip** it. A decisive deterministic winner with no floor left that could rise
+does not need a probabilistic second opinion, and paying for one is the cost this gate
+exists to remove.
+
+The gate records `semanticRouterCalled`, `semanticRouterReason`,
+`semanticRouterSkippedReason` and `candidateMargin` on the decision trace. Those fields are
+closed enums and numbers, never prose, and the schema that holds them is owned by
+[decision-plane.md](decision-plane.md) and [trace-and-logging.md](trace-and-logging.md).
+
+## Expected verified cost
+
+Selection minimises one objective, evaluated on the route rather than on a model's
+reputation, and applied **only** to candidates that already passed the hard gate and both
+floors:
+
+```text
+ExpectedVerifiedCost(route) =
+    routingOverhead
+  + workerCost
+  + verificationCost
+  + P(infrastructureFailure) * expectedRecoveryCost
+  + P(contentFailure)        * expectedEscalationCost
+  + P(c3Required)            * expectedArbiterCost
+```
+
+| Constant | Value | Meaning |
+| --- | --- | --- |
+| `CONSERVATIVE_INFRASTRUCTURE_FAILURE_PROBABILITY` | `0.20` | Used when no local infrastructure-failure evidence exists |
+| `CONSERVATIVE_CONTENT_FAILURE_PROBABILITY` | `0.20` | Used when no local content-failure evidence exists |
+| `CONSERVATIVE_C3_REQUIRED_PROBABILITY` | `1.00` | Used when C3 necessity is not established, matching "escalation is the default; acceptance is the exception" |
+
+The binding rules:
+
+- A **cost** term that cannot be measured makes the objective **unknown** for that route.
+  It is never treated as zero: a zero asserts a measurement, and an unmeasured route would
+  then look free and win on price.
+- An unavailable **probability** uses the conservative default above, never zero, and the
+  substitution is recorded.
+- An unknown objective is **never ranked as cheap**. It can neither win nor lose a cost
+  comparison; such a route falls back to the pre-existing deterministic ordering.
+- The objective states the **cost dimension** each cost term is denominated in; it never
+  sums one dimension into another. The dimension vocabulary is owned by
+  [metrics-and-self-improvement.md](metrics-and-self-improvement.md).
+- Reliability evidence may refine the probability terms, and only infrastructure-failure
+  evidence may feed `expectedRecoveryCost`; a content failure must not become a retry loop.
+  Promotion triggers remain owned by [fallback-policy.md](fallback-policy.md).
+- The objective never adds or removes a candidate, never changes a floor or a tier, and
+  never overrides the C3 escalation owned by [verification.md](verification.md).
+
 ## Routing rules
 
 1. **Honor verified pins.** A pinned runtime, model or agent must pass the live

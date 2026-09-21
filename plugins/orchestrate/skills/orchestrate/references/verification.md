@@ -99,6 +99,22 @@ Otherwise escalate to C3. Escalation is the default; acceptance is the exception
 - **an absent or failing injection-fixture result**;
 - a job that sets `approval`, emits a dispatch, or mutates shared state.
 
+### Direct to C3
+
+A structural escalation makes C3 mandatory whatever the micro-arbiter would say. In that
+case the micro-arbiter is **not invoked**: the deterministic checks run, and the job goes
+straight to C3.
+
+The gatekeeper's verdict can only feed the accept predicate, and on this path the accept
+predicate is already unreachable, so paying for the call buys nothing. The list above is
+exactly the set of conditions for this path: a verdict artifact, architecture or a
+public-contract decision, an `importance: high` implementation, external or destructive
+work, parallel or untrusted-prompt writes, a non-zero `riskFloorDelta`, contradictory
+evidence, and a job that sets `approval`, emits a dispatch or mutates shared state.
+
+The attempt records `microArbiterVerdict: none` together with the structural reason, so
+"not needed" stays distinguishable from "failed".
+
 ### Fail-closed rules
 
 - A **missing or unparseable** `riskTier` is treated as `R2`, so it escalates. A
@@ -149,6 +165,8 @@ A record cannot supply them, and a run cannot lower them.
 | `AGREEMENT_FLOOR` | `0.95` | Minimum measured agreement between micro-arbiter and C3 verdicts |
 | `INITIAL_THRESHOLD` | `0.90` | Numeric cut-off every signal is measured against |
 | `UNITS` | `probability` in `[0,1]` | Scale of every signal and of the threshold |
+| `SHADOW_SAMPLE_EVERY_N` | `10` | While uncalibrated, one attempt in this many is sampled so calibration evidence can accumulate |
+| `SHADOW_SAMPLE_MAX_PER_RUN` | `5` | Hard ceiling on shadow samples in one run, so the sample stays bounded |
 
 **Signal direction.** One threshold is applied with a per-signal direction,
 because `materially_unresolved` is harmful when it is **high**:
@@ -184,9 +202,48 @@ own bar by configuration.
 **Expiry.** A record that has not re-validated by `expiresAt` is stale and
 escalates. A threshold that never re-validates drifts into permission.
 
-**First run.** With no valid record, the micro-arbiter **observes and logs only**
-and C3 is mandatory for every job. This is a documented degraded mode, not a
-failure, and it is the correct default for a fresh install.
+### Durability and invalidation
+
+A calibration record may be **durable** — kept across runs, outside any run directory, at
+the path owned by [output-layout.md](output-layout.md) — so a fresh run does not re-measure
+what an earlier run already measured. Durability is a performance affordance and never a
+relaxation: a durable record must satisfy every validity clause above exactly as a
+run-local one does, and reuse re-checks those clauses every time.
+
+A durable record is reusable only when **every** identity component matches the classifier
+in use:
+
+| Identity component | Why a mismatch invalidates |
+| --- | --- |
+| `classifierProvider` | Agreement does not transfer between providers, and records are never pooled across them |
+| `classifierModelId` | A different model is a different classifier |
+| `classifierVersion` | A version change is a behaviour change |
+| `decisionSchemaHash` | A changed output schema changes what a signal means |
+| `promptContractHash` | A changed prompt changes what was measured |
+| `signalSetHash` | A record covering one signal set cannot validate the declared full set |
+| `thresholdPolicy` | A record measured under another threshold measures another gate |
+
+**The version-observability condition.** Durability is available only when the runtime can
+supply a `classifierVersion`. When it cannot, a silent classifier change is undetectable,
+and a durable record could survive that change while claiming agreement never measured on
+the new classifier. In that case the durable record is **not reusable**, and the install
+stays on the bounded shadow sample: evidence accumulates run by run, and nothing is reused
+across a change that cannot be seen.
+
+This branch is deliberately the conservative one. Reusing an unversioned record would trade
+the verification contract for a cheaper micro-arbiter path, which the escalation matrix
+forbids.
+
+**Self-validation.** A durable record cannot validate itself. The floors it is measured
+against are the owner-fixed constants above, which the record cannot supply and a run cannot
+lower, so a durable file asserting its own threshold or minimum is invalid by construction.
+
+**First run.** With no valid record, C3 is mandatory for every job, and the micro-arbiter
+is **not** called on every attempt: it runs only on a **bounded explicit shadow sample**,
+so calibration evidence can accumulate without taxing every job. Which attempts were
+sampled is recorded, and the bound is owned by `SHADOW_SAMPLE_EVERY_N` and
+`SHADOW_SAMPLE_MAX_PER_RUN` above. This is a documented degraded mode, not a failure, and
+it is the correct default for a fresh install.
 
 **Changing the threshold.** Raising or lowering a threshold is a reviewed edit
 backed by `metrics.jsonl` evidence and the recorded agreement rate. Neither

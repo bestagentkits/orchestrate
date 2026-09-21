@@ -196,6 +196,28 @@ the routing stage, after the safety gate, not while the graph is being drafted.
 A classifier invocation is run evidence like any other dispatch and appears in
 the report.
 
+## Value of information
+
+A plane call is paid for only when it can change a permitted decision. The deterministic
+rule that decides this — the candidate margin and whether a floor could still rise — is
+owned by [routing-policy.md](routing-policy.md), not by the classifier, and is not restated
+here.
+
+What this file owns is the call contract and its record:
+
+- A skipped call is a **recorded outcome, not an absence**. The decision trace carries
+  `semanticRouterCalled` and exactly one of `semanticRouterReason` or
+  `semanticRouterSkippedReason`, plus `candidateMargin`.
+- Those fields are **closed enums and numbers**. No model-authored prose is persisted, on
+  the same footing as every other field of the decision trace.
+- A skip changes no outcome by itself: deterministic policy proceeds exactly as it would
+  have, and a skipped call is never reported as a confident decision.
+- A classifier probe result is **reused within its valid live-evidence scope** rather than
+  re-probed for every job. Re-probing is required only when that scope is invalidated: a
+  new run, a changed candidate set, or a candidate whose state is no longer verified.
+- Where an installation needs calibration evidence, sampling is **bounded and explicit**.
+  It is never an unbounded per-job tax.
+
 ## Call shape
 
 - One bounded prompt per decision. No multi-turn dialogue.
@@ -391,6 +413,13 @@ Rules:
 - Malformed or low-confidence output fails closed to the C3 arbiter.
 - The micro-arbiter is a gatekeeper for the arbiter, never a replacement. It
   cannot accept work; it can only supply signals to a predicate that can.
+- The micro-arbiter is **not invoked** when the escalation matrix has already made C3
+  mandatory, because its verdict could not then change any permitted decision. That
+  determination, and the direct-to-C3 path it produces, are owned by
+  [verification.md](verification.md) and are not restated here.
+- While an installation is uncalibrated, the micro-arbiter runs only on a **bounded
+  explicit shadow sample**, so calibration evidence can accumulate without taxing every
+  attempt. The bound is owned by [verification.md](verification.md).
 
 ### 5. Profiler classification
 
