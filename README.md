@@ -88,6 +88,45 @@ Risk tiers are defined once, in
 [`safety-policy.md`](plugins/orchestrate/skills/orchestrate/references/safety-policy.md);
 the tables above summarize and link, they do not own the policy.
 
+### Cost-aware routing
+
+Selection minimizes the **expected verified cost to a verified successful outcome**, inside
+the floors above and never at their expense. Cost is not the first question; it is the
+question asked of the candidates that already cleared the gates.
+
+- **The objective has six terms**: routing overhead, worker cost, verification cost,
+  `P(infrastructure failure) × expected recovery cost`, `P(content failure) × expected
+  escalation cost`, and `P(C3 required) × expected arbiter cost`. A term with no evidence
+  uses a pinned conservative probability rather than zero, and an unmeasurable term is
+  `null`, never `0`.
+- **Three cost dimensions, never conflated**: `actualMarginalCostUsd` (money actually
+  attributable), `apiEquivalentCostUsd` (normalized price-equivalent usage) and `quotaBurn`
+  (allowance consumed). Quota burn is never added to dollars, and every budget declares the
+  dimension it is denominated in — an undeclared budget is refused.
+- **Quality is sample-size aware.** Ranking uses a documented deterministic lower bound
+  rather than a raw success rate, so a perfect three-sample record cannot outrank a stronger
+  three-hundred-sample one. The estimator's identity is recorded beside the bound.
+- **Evidence is cohort-scoped.** The narrowest comparable evidence wins, and falling back to
+  a broader cohort is recorded as an explicit degradation rather than left implicit.
+- **Deterministic Pareto pruning runs before any semantic call.** A candidate that is no
+  better on every comparable dimension and worse on one is removed — unless it is needed for
+  an explicit pin, independent review, stronger controls, fallback resilience, or because its
+  evidence is not actually comparable.
+- **The decision plane is asked only when the answer can matter.** If a deterministic winner
+  cannot be overturned and no floor can still rise, the call is skipped and the skip reason
+  is recorded. Where C3 is already structurally mandatory no micro-arbiter runs merely to
+  precede it, and an uncalibrated install pays only a bounded shadow sample.
+- **Calibration is reusable, not immortal.** A durable record is scoped to the classifier's
+  provider, model, version, decision schema, prompt contract, signal set and threshold
+  policy, and it expires; any change invalidates it, and a record can never validate itself.
+- **No model or provider is named a winner.** Current models are experiment subjects, never
+  policy constants, and the catalog is resolved from live evidence.
+
+Details:
+[`routing-policy.md`](plugins/orchestrate/skills/orchestrate/references/routing-policy.md),
+[`benchmark-evidence.md`](plugins/orchestrate/skills/orchestrate/references/benchmark-evidence.md),
+[`metrics-and-self-improvement.md`](plugins/orchestrate/skills/orchestrate/references/metrics-and-self-improvement.md).
+
 ### The System-1 decision plane (optional)
 
 Routing is deterministic. An optional, provider-neutral **decision plane** can
@@ -403,6 +442,21 @@ New in 2.2.0, owner-fixed constants:
 - Cache TTL: `CACHE_TTL_DEFAULT_HOURS` = 168 (seven days), `CACHE_TTL_MAX_HOURS` = 720
   (thirty days).
 - Promotion budget: `MAX_PROMOTIONS_DEFAULT` = 2, `MAX_PROMOTIONS_MAX` = 4.
+
+Pinned by the cost-aware routing contract, and fanned out here so a bound edited in one place
+and not the other fails the maintenance sweep:
+
+- Task quality floors: `QUALITY_FLOOR_STRONG_VERIFICATION` = 0.50,
+  `QUALITY_FLOOR_WEAK_VERIFICATION` = 0.85, `QUALITY_FLOOR_JUDGMENT` = 0.90.
+- Pareto pruning tolerance: `PARETO_TOLERANCE` = 0.05.
+- Semantic ambiguity threshold: `SEMANTIC_MARGIN_THRESHOLD` = 0.15.
+- Quality uncertainty: `QUALITY_CONFIDENCE_Z` = 1.96, with estimator
+  `QUALITY_ESTIMATOR` = `wilson-lower-bound`.
+- Conservative failure probabilities: `CONSERVATIVE_INFRASTRUCTURE_FAILURE_PROBABILITY` = 0.20,
+  `CONSERVATIVE_CONTENT_FAILURE_PROBABILITY` = 0.20,
+  `CONSERVATIVE_C3_REQUIRED_PROBABILITY` = 1.00.
+- Micro-arbiter shadow sampling: `SHADOW_SAMPLE_EVERY_N` = 10,
+  `SHADOW_SAMPLE_MAX_PER_RUN` = 5.
 
 Also fixed in 2.2.0: a corrupted sentence in `routing-policy.md` that read "its the
 floor deltas have already raised floors". It was found while rewriting that step and

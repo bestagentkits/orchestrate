@@ -354,6 +354,38 @@ owner_prom=$(grep -oE 'MAX_PROMOTIONS_MAX` \| `[0-9]+' "$S/fallback-policy.md" |
 readme_prom=$(grep -oE 'MAX_PROMOTIONS_MAX` = [0-9]+' README.md | grep -oE '[0-9]+$')
 test -n "$owner_prom" && test "$owner_prom" = "$readme_prom" \
   || echo "CONSTANT FAIL MAX_PROMOTIONS value disagrees"
+#    The cost-aware routing contract pins further bounds in its owners, and each must be
+#    fanned out to the README summary. Each value is extracted from the owner's table and
+#    from the README and compared, so a bound edited in one place only fails here. The
+#    number pattern stops at the digits, because a greedy one swallows the sentence's
+#    closing period and reports a false disagreement.
+const_value() {
+  grep -oE "$2[^0-9A-Za-z]{1,8}[0-9]+(\.[0-9]+)?" "$1" | grep -oE '[0-9]+(\.[0-9]+)?$' | head -1
+}
+for spec in "routing-policy.md QUALITY_FLOOR_STRONG_VERIFICATION 0.50" \
+            "routing-policy.md QUALITY_FLOOR_WEAK_VERIFICATION 0.85" \
+            "routing-policy.md QUALITY_FLOOR_JUDGMENT 0.90" \
+            "routing-policy.md PARETO_TOLERANCE 0.05" \
+            "routing-policy.md SEMANTIC_MARGIN_THRESHOLD 0.15" \
+            "routing-policy.md CONSERVATIVE_INFRASTRUCTURE_FAILURE_PROBABILITY 0.20" \
+            "routing-policy.md CONSERVATIVE_CONTENT_FAILURE_PROBABILITY 0.20" \
+            "routing-policy.md CONSERVATIVE_C3_REQUIRED_PROBABILITY 1.00" \
+            "benchmark-evidence.md QUALITY_CONFIDENCE_Z 1.96" \
+            "verification.md SHADOW_SAMPLE_EVERY_N 10" \
+            "verification.md SHADOW_SAMPLE_MAX_PER_RUN 5"; do
+  set -- $spec
+  grep -q "$2" "$S/$1" || echo "CONSTANT FAIL $2 absent from $1"
+  grep -q "$2" README.md || echo "CONSTANT FAIL $2 absent from README.md"
+  owner_value=$(const_value "$S/$1" "$2")
+  readme_value=$(const_value README.md "$2")
+  test -n "$owner_value" && test "$owner_value" = "$readme_value" \
+    || echo "CONSTANT FAIL $2 value disagrees (owner=$owner_value readme=$readme_value)"
+  test "$owner_value" = "$3" || echo "CONSTANT FAIL $2 drifted from its pinned value"
+done
+grep -q 'QUALITY_ESTIMATOR' "$S/benchmark-evidence.md" \
+  || echo "CONSTANT FAIL QUALITY_ESTIMATOR absent from its owner"
+grep -q 'QUALITY_ESTIMATOR' README.md \
+  || echo "CONSTANT FAIL QUALITY_ESTIMATOR absent from README.md"
 #    Must print nothing.
 
 # 16. BRANDING — neither reader surface may brand itself for a single harness again.

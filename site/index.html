@@ -852,7 +852,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
       <div class="two-col">
         <div>
           <h3 data-i18n="capBench">Benchmark-ranked routing</h3>
-          <p data-i18n="capBenchB">Routing ranks the candidates that already passed the hard filter, by measured success rate, cost per task and task duration at a given reasoning effort. Evidence is cached between runs. Benchmarks rank and never gate: they cannot set eligibility, a floor, a tier, a control or an approval.</p>
+          <p data-i18n="capBenchB">Routing ranks the candidates that already passed the hard filter, by measured success rate, cost per task and task duration at a given reasoning effort. Selection then minimizes the expected verified cost to a verified successful outcome — inside the floors, never at their expense — using a sample-size-aware quality bound and a deterministic Pareto pass before any semantic call. Evidence is cached between runs. Benchmarks rank and never gate: they cannot set eligibility, a floor, a tier, a control or an approval.</p>
         </div>
         <div>
           <h3 data-i18n="capPromote">Promotion and fail-safe</h3>
@@ -1396,7 +1396,7 @@ footer { border-top: 3px solid var(--ink); padding: 40px 0 56px; }
     h2Cap: "Có gì mới trong bản này",
     deckCap: "Bốn hành vi, mỗi cái kèm giới hạn giữ cho nó trung thực.",
     capBench: "Định tuyến theo benchmark",
-    capBenchB: "Định tuyến xếp hạng các ứng viên đã vượt bộ lọc cứng, theo tỉ lệ thành công, chi phí mỗi tác vụ và thời lượng đo được ở một mức reasoning effort. Bằng chứng được cache giữa các lượt chạy. Benchmark chỉ xếp hạng, không bao giờ gác cổng: nó không đặt được điều kiện đủ, ngưỡng sàn, bậc rủi ro, kiểm soát hay phê duyệt.",
+    capBenchB: "Định tuyến xếp hạng các ứng viên đã vượt bộ lọc cứng, theo tỉ lệ thành công, chi phí mỗi tác vụ và thời lượng đo được ở một mức reasoning effort. Sau đó việc chọn lựa tối thiểu hoá chi phí kỳ vọng đã kiểm chứng để đạt một kết quả thành công đã kiểm chứng — bên trong các ngưỡng sàn, không bao giờ đánh đổi chúng — dùng một cận chất lượng có tính đến cỡ mẫu và một lượt Pareto tất định trước mọi lời gọi ngữ nghĩa. Bằng chứng được cache giữa các lượt chạy. Benchmark chỉ xếp hạng, không bao giờ gác cổng: nó không đặt được điều kiện đủ, ngưỡng sàn, bậc rủi ro, kiểm soát hay phê duyệt.",
     capPromote: "Promotion và fail-safe",
     capPromoteB: "Hết quota, nhà cung cấp gián đoạn hay tiến trình sập sẽ đưa job sang ứng viên kế tiếp — sau khi hết ngân sách thử lại và ưu tiên thứ tự đã khai báo — và kết thúc ở trạng thái blocked có ghi log nếu không còn ứng viên. Bài kiểm tra thất bại không bao giờ promote, và lệnh dừng vì quyền cũng vậy.",
     capTrace: "Trace và log",
