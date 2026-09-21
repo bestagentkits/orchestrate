@@ -1,0 +1,204 @@
+{
+  "runtimeName": {
+    "state": "exposed",
+    "value": "pi"
+  },
+  "runtimeVersion": {
+    "state": "exposed",
+    "value": "0.86.1"
+  },
+  "orchestrateCommit": {
+    "state": "exposed",
+    "value": "a1ea8e9813f2d54294b3344f268b19a8a20189b7"
+  },
+  "orchestrateBranch": {
+    "state": "exposed",
+    "value": "benchmark"
+  },
+  "worktreeClean": {
+    "state": "exposed",
+    "value": false
+  },
+  "worktreeDirtyFiles": 18,
+  "environment": {
+    "pythonVersion": {
+      "state": "exposed",
+      "value": "3.13.5"
+    },
+    "platform": {
+      "state": "exposed",
+      "value": "Linux 6.12.101+deb13-amd64 x86_64"
+    },
+    "frozenAt": "2026-09-21T08:54:30+0200"
+  },
+  "catalogSnapshot": {
+    "state": "exposed",
+    "value": {
+      "digest": "8fa1818a6e14d8ac9351e3a3ab7870d60d40243cb2e748bc66d5141c39d7f104",
+      "count": 36
+    },
+    "basis": "sha256 over the runtime's own model listing"
+  },
+  "authReadiness": {
+    "environmentVariables": {
+      "TYPESAFE_API_KEY": false,
+      "OPENAI_API_KEY": false,
+      "ANTHROPIC_API_KEY": false
+    },
+    "envFilePresent": true,
+    "envFileTrustClass": "operator-provided-local-file",
+    "valuesRecorded": false,
+    "note": "presence, source location and trust class only; no value is read or stored"
+  },
+  "fixture": {
+    "id": "taskflow",
+    "version": "1.0.0",
+    "workspaceDigest": {
+      "state": "exposed",
+      "value": "b0cbfb56f0acc81b1b2e3f6946dd5b0a4abbc97d7150bbf7ef1d0fd89fcc74d0"
+    },
+    "graderDigest": {
+      "state": "exposed",
+      "value": "d6bd1ba1d7dc505cde315dbb57fbae8e71e8f14cbc7c176d2daefff2faeb4813"
+    },
+    "recomputed": {
+      "workspace": "b0cbfb56f0acc81b1b2e3f6946dd5b0a4abbc97d7150bbf7ef1d0fd89fcc74d0",
+      "graders": "d6bd1ba1d7dc505cde315dbb57fbae8e71e8f14cbc7c176d2daefff2faeb4813"
+    },
+    "digestsMatch": true
+  },
+  "pricingSnapshot": {
+    "state": "not-measured",
+    "value": null,
+    "basis": "prices must be captured at run time from the provider's own usage report; copying a price into the skill or the manifest would make the frozen comparison a transcription rather than a measurement"
+  },
+  "timeBand": {
+    "frozenAt": "2026-09-21T08:54:30+0200",
+    "validUntil": "2026-10-05T08:54:30+0200",
+    "maxAgeDays": 14,
+    "invalidation": "a runtime version change, a catalog digest change, a fixture or grader digest change, or a commit change invalidates the band and requires a re-freeze before any result is compared"
+  },
+  "arms": [
+    {
+      "id": "V0",
+      "name": "strong single-model baseline",
+      "decisionPlane": false,
+      "note": "the coordinator model alone, no routing policy"
+    },
+    {
+      "id": "V1",
+      "name": "current routing policy (skill plus harness directive)",
+      "decisionPlane": true,
+      "note": "the measured arm is skill-plus-directive, not the skill alone; the directive's dispatch mandate is not separable from the skill without a further arm"
+    },
+    {
+      "id": "V2",
+      "name": "generalized deterministic cost-aware router",
+      "decisionPlane": false,
+      "note": "the new policy with the decision plane off, so its deterministic half is measured alone"
+    },
+    {
+      "id": "V3",
+      "name": "V2 plus decision plane on value-positive choices",
+      "decisionPlane": true,
+      "note": "the plane is called only where it can change a permitted decision"
+    },
+    {
+      "id": "V4",
+      "name": "V3 plus a calibrated micro-arbiter",
+      "decisionPlane": true,
+      "note": "calibration valid, so an eligible C3 call can be avoided"
+    },
+    {
+      "id": "V5",
+      "name": "V4 plus durable calibration reuse",
+      "decisionPlane": true,
+      "note": "only if the durability contract is implemented; otherwise recorded as not run"
+    },
+    {
+      "id": "ORACLE",
+      "name": "offline retrospective oracle",
+      "decisionPlane": false,
+      "note": "the retrospectively cheapest eligible successful route per task, used only to estimate routing headroom and never as a policy"
+    }
+  ],
+  "preregistration": {
+    "primaryMetric": {
+      "name": "verified cost per successful task",
+      "definition": "total end-to-end attributable cost divided by accepted successful tasks, including coordinator, worker, classifier, retry, fallback, micro-arbiter and C3 arbiter calls",
+      "dimension": "actualMarginalCostUsd",
+      "note": "quota burn is never added to dollars; the metric declares its dimension"
+    },
+    "secondaryMetrics": [
+      "success rate",
+      "settlement rate (trials reaching a verified, reported outcome)",
+      "duration per successful task",
+      "dispatch cost share",
+      "non-settlement rate"
+    ],
+    "nonInferiorityMargin": {
+      "value": 0.05,
+      "unit": "absolute success-rate difference",
+      "note": "the candidate may not be worse than the baseline by more than five percentage points"
+    },
+    "minimumWorthwhileSaving": {
+      "value": 0.15,
+      "unit": "relative reduction in verified cost per successful task",
+      "note": "a smaller saving is not claimed as an improvement even if it is positive"
+    },
+    "trialCount": {
+      "tasks": 20,
+      "trialsPerTaskPerArm": 3,
+      "arms": 7,
+      "planned": 420,
+      "note": "the oracle arm is computed offline and costs nothing"
+    },
+    "stoppingRule": {
+      "interimAt": "50% of planned trials per arm",
+      "interimAlpha": 0.005,
+      "finalAlpha": 0.045,
+      "stopForBenefit": "interim lower confidence bound for the saving exceeds the minimum worthwhile saving AND non-inferiority holds",
+      "stopForFutility": "the success-rate difference confidence interval lies entirely below the non-inferiority margin",
+      "note": "alpha is spent across two looks so the final threshold is not the unadjusted 0.05"
+    },
+    "stratification": {
+      "by": [
+        "task cohort",
+        "task type"
+      ],
+      "note": "every stratum reports its own paired estimate; a pooled estimate alone is not reported as the result"
+    },
+    "pairedProcedure": {
+      "design": "task-major, paired by (task, trial)",
+      "note": "both arms of a pair run back to back so a slow period or a model revision cannot land on one arm only"
+    },
+    "statisticalTests": {
+      "cost": "paired bootstrap over task-level pairs, 10000 resamples, percentile interval",
+      "success": "paired difference in proportions with a Newcombe interval",
+      "nonInferiority": "the lower confidence bound of the success-rate difference must sit above minus the non-inferiority margin",
+      "multiplicity": "two looks with alpha spending as declared in the stopping rule"
+    },
+    "criticalCohorts": [
+      "security-sensitive",
+      "c3-mandatory",
+      "independence-required"
+    ],
+    "improvementConditions": [
+      "the confidence interval for quality degradation stays inside the pre-registered non-inferiority margin",
+      "the confidence interval for verified-cost savings is positive and clears the minimum worthwhile saving",
+      "no critical cohort regresses",
+      "no safety, control or independence invariant is weakened",
+      "the accounting audit passes on the run"
+    ]
+  },
+  "workerFrontierProtocol": {
+    "order": "workers first, router second",
+    "step1": "run the frozen catalog's models and effort modes directly as workers on the frozen fixture, with no orchestration, to identify the local Pareto frontier over verified cost and quality",
+    "step2": "freeze that frontier and use it as the candidate set for the router ablation",
+    "reason": "measuring the router against an unfrozen candidate set would confound the policy's effect with the candidate set's composition",
+    "coordinatorHeldFixed": true,
+    "note": "the coordinator is held fixed during the router ablation; coordinator optimization is a separate later experiment",
+    "externalEvidence": "external leaderboards may seed hypotheses but are never proof of this skill's performance and never enter the candidate set directly"
+  },
+  "paidRunExecuted": false
+}
