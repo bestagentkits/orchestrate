@@ -32,6 +32,7 @@ from collections import Counter
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.dirname(os.path.dirname(HERE))
 
+from tools.benchmark import arms as arm_defs
 from tools.benchmark import trial_schema
 from tools.benchmark.measure import as_float, as_int
 from tools.benchmark.task_catalog import GRADER_MODULE, TASKS
@@ -333,6 +334,12 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--agent-timeout", type=int, default=DEFAULT_AGENT_TIMEOUT)
     parser.add_argument("--variants", default="astra-only,orchestrate")
     parser.add_argument(
+        "--arms",
+        default="",
+        help="JSON arm list; each arm names its own provider, model, effort, skill "
+             "version, directive and plane state",
+    )
+    parser.add_argument(
         "--resume",
         action="store_true",
         help="skip trials already recorded in the output directory's results.jsonl",
@@ -350,7 +357,13 @@ def main(argv: list[str]) -> int:
 
     payload = load_fixture(FIXTURE_PATH)
     tasks = TASKS[: args.limit] if args.limit else list(TASKS)
-    variants = [name.strip() for name in args.variants.split(",") if name.strip()]
+    arm_specs: dict = {}
+    if args.arms:
+        for arm in arm_defs.load_arms(args.arms):
+            arm_specs[arm["id"]] = arm
+        variants = list(arm_specs)
+    else:
+        variants = [name.strip() for name in args.variants.split(",") if name.strip()]
 
     out_dir = os.path.abspath(args.out)
     ensure_dir(out_dir)
@@ -367,12 +380,18 @@ def main(argv: list[str]) -> int:
     skill_text = read_text(SKILL_MD) if os.path.exists(SKILL_MD) else ""
     if "orchestrate" in variants and not skill_text:
         raise SystemExit(f"orchestrate variant requested but {SKILL_MD} is missing")
-    system_prompt_path = os.path.join(out_dir, "orchestrate-system-prompt.md")
     classifier_path = os.path.join(HERE, "jev_classifier.py")
-    write_text(
-        system_prompt_path,
-        skill_text + "\n\n" + ORCHESTRATE_DIRECTIVE.format(classifier=classifier_path),
-    )
+    # The two-variant mode keeps one shared prompt; arm mode gives every arm its own.
+    system_prompt_path = os.path.join(out_dir, "orchestrate-system-prompt.md")
+    if not arm_specs:
+        write_text(
+            system_prompt_path,
+            skill_text + "\n\n" + ORCHESTRATE_DIRECTIVE.format(classifier=classifier_path),
+        )
+    arm_prompts = {
+        arm_id: arm_defs.system_prompt_for(spec, out_dir, classifier_path)
+        for arm_id, spec in arm_specs.items()
+    }
 
     environment = dict(os.environ)
     environment["PATH"] = shim_dir + os.pathsep + environment.get("PATH", "")
@@ -394,6 +413,18 @@ def main(argv: list[str]) -> int:
     variant_environments = {name: dict(environment) for name in variants}
     if credential and "orchestrate" in variant_environments:
         variant_environments["orchestrate"][CREDENTIAL_VARIABLE] = credential
+    # An arm receives the provider credential only when it declares the plane on, so an arm
+    # that cannot call the plane never holds a secret it has no use for.
+    if credential:
+        for arm_id, spec in arm_specs.items():
+            if spec.get("plane") == "on":
+                variant_environments[arm_id][CREDENTIAL_VARIABLE] = credential
+
+    try:
+        check_run_identity(out_dir, variants)
+    except RunIdentityError as error:
+        print(f"ERROR: {error}", file=sys.stderr)
+        return 2
 
     manifest = {
         "fixtureId": payload.get("id"),
@@ -404,6 +435,7 @@ def main(argv: list[str]) -> int:
         "trials": args.trials,
         "capUsd": args.cap_usd,
         "variants": variants,
+        "arms": [arm_specs[name] for name in variants] if arm_specs else [],
         "taskCount": len(tasks),
         "credentialAvailable": bool(credential),
         "credentialVariable": CREDENTIAL_VARIABLE,
@@ -468,24 +500,41 @@ def main(argv: list[str]) -> int:
                     except OSError as exc:
                         raise SystemExit(f"cannot clear {workspace}: {exc}") from exc
                 materialize(payload, workspace)
+                spec = arm_specs.get(variant) or {}
+                if spec:
+                    arm_defs.materialize_skill(spec, workspace)
 
                 stats_before = session_files(session_dir)
                 dispatches_before = count_log_lines(invocation_log)
 
                 started = time.monotonic()
+                arm_provider = spec.get("provider", PROVIDER)
+                arm_model = spec.get("model", MODEL)
+                arm_effort = spec.get("effort")
                 command = [
                     real_pi,
+                    # `--no-extensions` is not optional here. An installed extension can
+                    # silently re-route the declared model to another provider, which makes
+                    # the arm measure something other than what it declares. The first
+                    # frontier run was stopped for exactly that reason.
+                    "--no-extensions",
                     "--no-skills",
                     "--provider",
-                    PROVIDER,
+                    arm_provider,
                     "--model",
-                    MODEL,
+                    arm_model,
                     "--print",
                     "--mode",
                     "json",
                 ]
-                if variant == "orchestrate":
-                    command += ["--append-system-prompt", system_prompt_path]
+                if arm_effort:
+                    command += ["--thinking", arm_effort]
+                if arm_specs:
+                    prompt = arm_prompts.get(variant)
+                else:
+                    prompt = system_prompt_path if variant == "orchestrate" else None
+                if prompt:
+                    command += ["--append-system-prompt", prompt]
                 command += [task["prompt"]]
                 command = apply_session_dir(command, session_dir)
 
@@ -521,11 +570,61 @@ def main(argv: list[str]) -> int:
                 spent = combine(pool, list(pool))["costUsd"]
                 dispatches = max(0, count_log_lines(invocation_log) - dispatches_before)
 
+                # Resolve which models actually did paid work *before* the result record is
+                # built, because the record has to carry the contamination verdict.
+                requested_key = f"{arm_provider}/{arm_model}"
+                may_dispatch = arm_may_dispatch(spec)
+                resolution = resolve_models(trial_stats.get("modelCosts") or {},
+                                            requested_key, may_dispatch=may_dispatch)
+                dominant = resolution.get("dominant") or ""
+                resolved_provider, _, resolved_model = dominant.partition("/")
+                if resolution["contaminated"]:
+                    print(
+                        f"  WARNING {name}: {resolution['reason']}",
+                        flush=True,
+                    )
+
+                rejection = provider_error(fresh_sessions + escaped)
+                recovered_error = None
+                verdict = classify_provider_error(rejection, trial_stats["costUsd"])
+                if verdict == "invalid":
+                    # Nothing ran and nothing was paid for: the provider refused the model.
+                    status = "invalid"
+                    failure = rejection
+                    print(
+                        f"  WARNING {name}: the provider refused the model; "
+                        f"recorded as invalid, not as a task failure: {rejection}",
+                        flush=True,
+                    )
+                elif verdict == "recovered":
+                    # The model ran and did paid work, then hit an error it recovered from.
+                    # That is a reliability observation, not an availability verdict. Flipping
+                    # the status on any error mislabelled five successful ablation trials,
+                    # including one that dispatched 14 times and cost $1.80 before finishing.
+                    recovered_error = rejection
+                    print(
+                        f"  note {name}: recovered provider error "
+                        f"({str(rejection)[:60]}); trial kept, recorded as a reliability observation",
+                        flush=True,
+                    )
+
                 install_graders(payload, workspace)
                 passed, grader_output = run_grader(workspace, task["grader"])
 
                 record.update(
                     {
+                        "arm": spec.get("id") or variant,
+                        "armKind": spec.get("kind"),
+                        "armNote": spec.get("note"),
+                        "requestedProvider": arm_provider,
+                        "requestedModel": arm_model,
+                        "requestedEffort": arm_effort,
+                        "skillSource": spec.get("skill"),
+                        "planeState": spec.get("plane"),
+                        "armContaminated": resolution["contaminated"],
+                        "foreignModels": resolution.get("foreign") or [],
+                        "resolvedModels": resolution.get("resolved") or [],
+                        "recoveredError": recovered_error,
                         "status": status,
                         "failure": failure,
                         "agentExitCode": exit_code,
@@ -550,8 +649,6 @@ def main(argv: list[str]) -> int:
                 )
                 gate = read_trace_payload(workspace, "gate")
                 route_decision = read_trace_payload(workspace, "route")
-                resolved = dominant_model(trial_stats["models"]) or ""
-                resolved_provider, _, resolved_model = resolved.partition("/")
                 append_trial_record(
                     out_dir,
                     trial_schema.build_trial_record(
@@ -564,13 +661,13 @@ def main(argv: list[str]) -> int:
                             "status": status,
                             "success": bool(passed),
                             "durationSeconds": round(duration, 3),
-                            "requestedProvider": PROVIDER,
-                            "requestedModel": MODEL,
-                            "requestedEffort": None,
+                            "requestedProvider": arm_provider,
+                            "requestedModel": arm_model,
+                            "requestedEffort": arm_effort,
                             "resolvedProvider": resolved_provider or None,
                             "resolvedModel": resolved_model or None,
                             "resolvedEffort": (route_decision or {}).get("selectedEffortMode"),
-                            "failureClass": "infrastructure" if status == "timeout" else None,
+                            "failureClass": "infrastructure" if status in ("timeout", "invalid") else None,
                             "deterministicVerificationResult": "pass" if passed else "fail",
                         },
                         trial_capabilities(trial_stats, runtime_version, gate),
@@ -724,6 +821,130 @@ def dominant_model(models: dict) -> str | None:
     if not models:
         return None
     return max(models.items(), key=lambda item: item[1])[0]
+
+
+class RunIdentityError(RuntimeError):
+    """Raised when a run would be appended to a directory holding a different arm set."""
+
+
+def check_run_identity(out_dir: str, variants: list) -> None:
+    """Refuse to append a run to a directory that already holds a different arm set.
+
+    A run directory belongs to one experiment. Appending a second arm set to the same
+    directory mixes two experiments: `results.jsonl` then holds trials whose arms no longer
+    correspond to the manifest, and the audit recomputes over both as if they were one run.
+    That mistake was made once during this goal -- the third frontier attempt wrote into the
+    second attempt's directory, so eight arms from two different arm files shared one
+    results file. The check exists so it cannot be made twice.
+    """
+    manifest_path = os.path.join(out_dir, "manifest.json")
+    if not os.path.exists(manifest_path):
+        return
+    try:
+        with open(manifest_path, "r", encoding="utf-8") as handle:
+            previous = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        # An unreadable manifest is not evidence of a different arm set, and refusing here
+        # would block a legitimate resume of a partially written run.
+        return
+    previous_variants = list(previous.get("variants") or [])
+    if previous_variants and previous_variants != list(variants):
+        raise RunIdentityError(
+            f"refusing to append to {out_dir}: it holds a different arm set "
+            f"({previous_variants}) than this run ({list(variants)}); "
+            f"use a new --out directory"
+        )
+
+
+def provider_error(session_paths: list) -> str | None:
+    """The provider's rejection message, when a model refused to run at all.
+
+    `pi` exits 0 when the provider rejects a model, so without this check a trial in which
+    nothing ran is recorded as a task the model failed -- a quality verdict where the truth
+    is an availability verdict. The second frontier run contained exactly that:
+    `gpt-5.3-codex-spark` is listed by the catalog and refused by a ChatGPT-account login,
+    which produced a $0.0000 "failure" after 3.8 seconds.
+    """
+    for path in session_paths:
+        try:
+            with open(path, "r", encoding="utf-8", errors="replace") as handle:
+                for line in handle:
+                    try:
+                        record = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    message = record.get("message")
+                    if not isinstance(message, dict):
+                        continue
+                    if message.get("stopReason") == "error" and message.get("errorMessage"):
+                        return str(message["errorMessage"])
+        except OSError:
+            continue
+    return None
+
+
+def classify_provider_error(rejection: str | None, cost_usd: float) -> str:
+    """Whether a provider error makes a trial unavailable or merely unreliable.
+
+    Returns `"none"`, `"invalid"` or `"recovered"`.
+
+    The distinction is the one the harness got wrong. A provider error with no paid work
+    behind it means the model never ran -- the ID-5 case, where `gpt-5.3-codex-spark` cost
+    $0.0000 and finished in 3.8 seconds. A provider error with paid work behind it means the
+    model ran, was billed, hit something transient, and the agent carried on -- which is
+    what happened to five ablation trials that succeeded while being recorded as invalid.
+    Only the first is an availability verdict.
+    """
+    if not rejection:
+        return "none"
+    return "invalid" if cost_usd <= 0 else "recovered"
+
+
+def arm_may_dispatch(spec: dict) -> bool:
+    """Whether an arm is expected to delegate work to other models.
+
+    An arm carrying the dispatch directive may orchestrate, so several paid models are the
+    treatment rather than a defect. An arm without the directive, or one explicitly told not
+    to dispatch, must stay on its declared model. The observed dispatch counts agree with
+    this rule: V0 and VN recorded 0 dispatches and one paid model each, while V1-V5 recorded
+    10-18 dispatches and four to five paid models each.
+    """
+    return spec.get("directive") == "orchestrate" and not spec.get("noDispatchNote")
+
+
+def resolve_models(model_costs: dict, requested: str, may_dispatch: bool = False) -> dict:
+    """Which models actually did paid work, and whether the arm's model was among them.
+
+    Counting `model_change` entries is not enough: an arm can announce its declared model and
+    then have an extension re-route the work to a different provider, which leaves the
+    declared model with a `model_change` and **no usage at all**. Weighting by cost is what
+    makes that visible, and naming the foreign models is what makes it auditable.
+
+    The verdict depends on whether the arm is *expected* to dispatch. A non-dispatching arm
+    must have exactly one paid model, so any other model doing paid work is contamination. A
+    dispatching arm is an orchestrator: its other paid models are the treatment, and
+    contamination there means the declared coordinator did no work at all. Applying the
+    non-dispatching rule to an orchestrator reports the treatment as a defect, which is what
+    the first ablation attempt did to V1-V5.
+    """
+    paid = {model: cost for model, cost in (model_costs or {}).items() if cost > 0}
+    if not paid:
+        return {"resolved": [], "dominant": None, "contaminated": False,
+                "foreign": [], "unknown": True, "mayDispatch": may_dispatch,
+                "reason": None}
+    dominant = max(paid.items(), key=lambda item: item[1])[0]
+    foreign = sorted(model for model in paid if model != requested)
+    if may_dispatch:
+        contaminated = requested not in paid
+        reason = (None if not contaminated else
+                  f"the declared coordinator {requested} did no paid work")
+    else:
+        contaminated = bool(foreign)
+        reason = (None if not contaminated else
+                  f"{', '.join(foreign)} did paid work in a non-dispatching arm")
+    return {"resolved": sorted(paid), "dominant": dominant,
+            "contaminated": contaminated, "foreign": foreign, "unknown": False,
+            "mayDispatch": may_dispatch, "reason": reason}
 
 
 def _token_capability(stats: dict, field: str) -> dict:
