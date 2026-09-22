@@ -9,7 +9,7 @@
   },
   "orchestrateCommit": {
     "state": "exposed",
-    "value": "a1ea8e9813f2d54294b3344f268b19a8a20189b7"
+    "value": "e744a279da2e561a5f5cab7895b5c1c19ca39925"
   },
   "orchestrateBranch": {
     "state": "exposed",
@@ -19,7 +19,7 @@
     "state": "exposed",
     "value": false
   },
-  "worktreeDirtyFiles": 18,
+  "worktreeDirtyFiles": 1,
   "environment": {
     "pythonVersion": {
       "state": "exposed",
@@ -29,7 +29,7 @@
       "state": "exposed",
       "value": "Linux 6.12.101+deb13-amd64 x86_64"
     },
-    "frozenAt": "2026-09-21T08:54:30+0200"
+    "frozenAt": "2026-09-21T09:19:53+0200"
   },
   "catalogSnapshot": {
     "state": "exposed",
@@ -73,8 +73,8 @@
     "basis": "prices must be captured at run time from the provider's own usage report; copying a price into the skill or the manifest would make the frozen comparison a transcription rather than a measurement"
   },
   "timeBand": {
-    "frozenAt": "2026-09-21T08:54:30+0200",
-    "validUntil": "2026-10-05T08:54:30+0200",
+    "frozenAt": "2026-09-21T09:19:53+0200",
+    "validUntil": "2026-10-05T09:19:53+0200",
     "maxAgeDays": 14,
     "invalidation": "a runtime version change, a catalog digest change, a fixture or grader digest change, or a commit change invalidates the band and requires a re-freeze before any result is compared"
   },

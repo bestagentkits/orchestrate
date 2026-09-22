@@ -209,8 +209,12 @@ on a deliberately inconsistent one, which is asserted by tests.
   module does not implement; that divergence is what the conflict register and the sweep are for.
 - **The time band is not enforced.** Its invalidation triggers are named, but a re-freeze is a
   deliberate act.
-- **Two small items remain open for the user**: reverting `ak insights consent --collection=true`,
-  and deleting the untracked `tools/benchmark/tmp/bs.json`.
+- **Two small items were closed by the operator's delegate on 2026-09-22**: `ak insights
+  consent` is back to `collection: false`, which restores the state that was changed
+  unilaterally during debugging, and the untracked `tools/benchmark/tmp/bs.json` was deleted.
+  That file was stale (a superseded run configuration from 2026-09-20) and, more to the
+  point, it was untracked **without** being git-ignored, so it was one `git add -A` away from
+  being committed.
 
 ## 9. Remaining experiment steps
 
